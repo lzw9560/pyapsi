@@ -1,0 +1,14 @@
+#include <pybind11/pybind11.h>
+#include "cppmult.hpp"
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(item, m) {
+    m.doc() = "pybind11 item plugin";  // Optional module docstring
+
+    py::class_<Item>(m, "Item")
+        .def(py::init<const std::array<unsigned char, 16>&>())
+        .def("hash_to_value", &Item::hash_to_value)
+        .def("to_bitstring", &Item::to_bitstring)
+        .def("to_string", &Item::to_string);
+}
