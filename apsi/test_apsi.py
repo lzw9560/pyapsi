@@ -2,29 +2,11 @@
 # -*- coding: utf-8 -*-
 
 # Created by lizhiwei at 2022/9/21
-# from pydantic import Dict, List, Union
 from hashlib import blake2b
 from typing import List, Union, Dict
 from server import LabeledServer, UnlabeledServer
 from client import LabeledClient, UnlabeledClient
 
-from dataset import Dataset
-import time
-
-start = time.time()
-dataset = Dataset()
-ds = dataset.read(format="csv", paths="./db_header.csv", parallelism=500)
-ds.schema()
-print("***")
-ds.show(2)
-print("***")
-
-print("read:", time.time() - start)
-
-# TODO 并行优化
-ds = ds.map(lambda record: {"item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
-
-ds = ds.sort("item")
 
 import pyapsi
 
