@@ -52,7 +52,6 @@ def _query(
 
 
 
-# from server import LabeledClient, LabeledServer, UnlabeledClient
 apsi_server = LabeledServer()
 apsi_server.init_db(params_string, max_label_length=10)
 # add item 
