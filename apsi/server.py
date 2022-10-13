@@ -118,8 +118,9 @@ class LabeledServer(_BaseServer):
         """
         self._requires_db()
         # TODO: Expose batch add in C++ PyAPSI; and add length checks accordingly
-        for item, label in items_with_label:
-            self.add_item(item=item, label=label)
+        # for item, label in items_with_label:
+            # self.add_item(item=item, label=label)
+        self._add_items(items_with_label)
 
 
 class UnlabeledServer(_BaseServer):

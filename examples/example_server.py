@@ -88,8 +88,9 @@ for batch in ds.iter_batches():
 
     start = time.time()
     items = [(data[0], data[1]) for idx, data in batch.iterrows()] 
-    print(items)
-    # apsi_server.add_items(items)
+    # print(items)
+    print("add itemssssssssssssss")
+    apsi_server.add_items(items)
     print("batch time add items:", time.time() - start) # 40 s
 
     if i == 1:

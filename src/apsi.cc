@@ -44,6 +44,17 @@ using namespace apsi::receiver;
 // JSON
 #include "json/json.h"
 
+#include <typeinfo>
+
+#define PYBIND11_DETAILED_ERROR_MESSAGES
+
+// PYBIND11_MAKE_OPAQUE(std::vector<Item>);
+// PYBIND11_MAKE_OPAQUE(std::vector<std::pair<Item, Label>>);
+// PYBIND11_MAKE_OPAQUE(std::vector<std::pair<std::string, std::string>>);
+// PYBIND11_MAKE_OPAQUE(std::vector<std::pair<std::uint64_t, std::uint64_t>>);
+
+// using PairList = std::vector<std::pair<Item, Label>>;
+
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
@@ -242,6 +253,30 @@ class APSIServer {
         }
     }
 
+    void add_items(const py::list& items_with_label) {
+        vector<pair<Item, Label>> items;
+        for (py::handle item_label : items_with_label) {
+            cout << item_label << "\n";
+            pair<string, string> item_pair;
+            item_pair = item_label.cast<std::pair<string, string>>();
+            cout << "pair: " << item_pair.first << " : " << item_pair.second
+                 << "\n";
+            // item
+            string input_item = item_pair.first;
+            cout << "imput itam: " << input_item << "\n";
+            Item item(input_item);
+
+            // label
+            std::vector<unsigned char> label(64);
+            std::copy(item_pair.second.begin(), item_pair.second.end(),
+                      label.data());
+            cout << "label data: " << label.data() << "\n";
+            // push back
+            items.push_back({item, label});
+        }
+        _db->insert_or_assign(items);
+    }
+
     void add_unlabeled_items(const py::list& input_items) {
         vector<Item> items;
         for (py::handle item : input_items) {
@@ -285,12 +320,18 @@ std::size_t save_to_file(const SenderDB& db, const string& file_name) {
     return save_size;
 }
 
-PYBIND11_MAKE_OPAQUE(std::vector<Item>);
+// PYBIND11_MAKE_OPAQUE(std::vector<std::pair<Item, Label>>);
+PYBIND11_MAKE_OPAQUE(std::vector<std::string, std::allocator<std::string>>);
 
+using StringList = std::vector<std::string, std::allocator<std::string>>;
 PYBIND11_MODULE(pyapsi, m) {
     m.doc() = "pybind11 pyapsi plugin";  // Optional module docstring
 
-    py::bind_vector<std::vector<Item>>(m, "VectorItem");
+    // py::bind_vector<std::vector<Item>>(m, "VectorItem");
+    // py::bind_vector<std::vector<std::pair<std::string, std::string>>>(
+    //     m, "VectorPairString");
+    // py::bind_vector<std::vector<std::pair<std::uint64_t, std::uint64_t>>>(
+    //     m, "VectorPairUint64T");
 
     py::class_<Item>(m, "Item")
         //        .def("hash_to_value", &Item::hash_to_value)
@@ -400,6 +441,7 @@ PYBIND11_MODULE(pyapsi, m) {
         .def("_save_db", &APSIServer::save_db)
         .def("_load_db", &APSIServer::load_db)
         .def("_add_item", &APSIServer::add_item)
+        .def("_add_items", &APSIServer::add_items)
         .def("_add_unlabeled_items", &APSIServer::add_unlabeled_items)
         .def("_handle_oprf_request", &APSIServer::handle_oprf_request)
         .def("_handle_query", &APSIServer::handle_query)

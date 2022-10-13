@@ -75,7 +75,9 @@ items = [('JRIKrInSyZfcBADbXigLiGnHisxpWrEctHEQzrryFjAHFoPQAjEoxQhTPoYgXIFI', 'G
 import time
 start = time.time()
 for item in items:
+    start = time.time()
     apsi_server.add_item(item[0], item[1])
+    print(time.time() - start)
     
 
 print("time: ", time.time() - start)
