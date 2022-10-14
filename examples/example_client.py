@@ -13,7 +13,7 @@ import sys
 here = path.abspath(path.join(path.dirname(__file__) ))
 print(here)
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
-from apsi.dataset import Dataset
+from dataset.dataset import Dataset
 from apsi.server import LabeledServer, UnlabeledServer
 from apsi.client import LabeledClient, UnlabeledClient
 

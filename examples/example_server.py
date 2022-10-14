@@ -18,7 +18,7 @@ from pathlib import Path
 here = path.abspath(path.join(path.dirname(__file__) ))
 print(here)
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
-from apsi.dataset import Dataset
+from dataset.dataset import Dataset
 from apsi.server import LabeledServer, UnlabeledServer
 from apsi.client import LabeledClient, UnlabeledClient
 
@@ -95,6 +95,7 @@ for batch in ds.iter_batches():
 
     if i == 1:
         break
+
 # out put
 tmp_path = "."
 db_file_path = str(Path(here) / "apsi.db")
