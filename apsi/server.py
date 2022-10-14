@@ -7,6 +7,9 @@
 # @Date   : 10/10/2022, 5:02:57 PM
 
 """(Un-)labeled APSI server implementations."""
+from os import path
+import sys
+sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
 from typing import Iterable, List, Tuple
 from pathlib import Path

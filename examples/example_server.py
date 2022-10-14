@@ -22,7 +22,7 @@ from dataset.dataset import Dataset
 from apsi.server import LabeledServer, UnlabeledServer
 from apsi.client import LabeledClient, UnlabeledClient
 
-print( str(Path(here) / "apsi.db"))
+print(str(Path(here) / "apsi.db"))
 
 import time
 here_parent = path.abspath(path.join(path.dirname(__file__), "../"))

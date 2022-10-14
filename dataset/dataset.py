@@ -12,7 +12,7 @@ import ray.data
 from loguru import logger
 from ray.data import Dataset
 
-logger.add(sys.stdout, colorize=True)
+# logger.add(sys.stdout, colorize=True)
 
 
 class Dataset(object):
