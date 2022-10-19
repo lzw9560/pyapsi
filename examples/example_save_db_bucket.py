@@ -33,40 +33,40 @@ here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 from apsi.utils import _query
 from apsi.client import LabeledClient
 from apsi.server import LabeledServer
-tmp = Path(here_parent + "/data")
-data_path = str(tmp/"db_10w.csv")
-print(data_path)
-start = time.time()
-dataset = Dataset()
-ds = dataset.read(format="csv", paths=data_path, parallelism=500)
-ds.schema()
-print("***")
-ds.show(2)
-print("***")
-logger.debug("The CSV file reading 10w strip data takes {}s:".format(time.time() - start))
+# tmp = Path(here_parent + "/data")
+# data_path = str(tmp/"db_10w.csv")
+# print(data_path)
+# start = time.time()
+# dataset = Dataset()
+# ds = dataset.read(format="csv", paths=data_path, parallelism=500)
+# ds.schema()
+# print("***")
+# ds.show(2)
+# print("***")
+# logger.debug("The CSV file reading 10w strip data takes {}s:".format(time.time() - start))
 
 
-## hash sort
-# Add a new column equal to hash item.
-# ds = ds.add_column(
-#     "hash_item", lambda df: df["item"]
-# )
-ds.schema()
-print("add column ***")
-ds.show(2)
-print("add column ***")
-# TODO 并行优化
-ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
-# ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+# ## hash sort
+# # Add a new column equal to hash item.
+# # ds = ds.add_column(
+# #     "hash_item", lambda df: df["item"]
+# # )
+# ds.schema()
+# print("add column ***")
+# ds.show(2)
+# print("add column ***")
+# # TODO 并行优化
+# ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+# # ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
 
-ds.schema()
-print("hash item ***")
-ds.show(2)
-print("hash item ***")
-ds = ds.sort("hash_item")
-ds.schema()
-print("***")
-ds.show(2)
+# ds.schema()
+# print("hash item ***")
+# ds.show(2)
+# print("hash item ***")
+# ds = ds.sort("hash_item")
+# ds.schema()
+# print("***")
+# ds.show(2)
 
 
 def read_csv(data_path):
