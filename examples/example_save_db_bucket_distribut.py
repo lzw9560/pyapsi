@@ -104,17 +104,18 @@ import ray
 
 @ray.remote
 def map(data, buckets):
-    print(type(data), data.count())
+    # print(type(data), data.count())
     # outputs = [list() for _ in range(npartitions)]
     outputs = buckets
     # print("output len: ", len(outputs))
     for idx, row in data.iterrows():
-        logger.debug("hash value: hex: {} int: {}".format( {row["hash_item"][:2]}, {int(row["hash_item"][:2], 16)}))
+        # logger.debug("hash value: hex: {} int: {}".format( {row["hash_item"][:2]}, {int(row["hash_item"][:2], 16)}))
         index_key = row["hash_item"][:2]
         row = row.drop(labels="hash_item")
         if outputs.get(index_key, None) is None:
             outputs[index_key] = []
         outputs[index_key].append(row)
+    logger.debug(f"outputs type: {type(outputs)}, size: {len(outputs)}")
     # print(len(outputs))
     return outputs
 
@@ -124,7 +125,7 @@ def encrypt(partition, k):
     apsi_server = LabeledServer()
     apsi_server.init_db(params_string, max_label_length=64)
     apsi_server.add_items(partition)
-    print(type(partition))
+    print(f"encrypt bucket: {k}")
     db_file_path = "./data/dis_apsidb/apsi_%s.db"%k
     apsi_server.save_db(db_file_path=db_file_path)
     return db_file_path
@@ -132,7 +133,7 @@ def encrypt(partition, k):
     
 @ray.remote
 def reduce(partitions):
-    print("partitions")
+    # print("partitions")
     print(type(partitions), len(partitions))
     outputs = []
     for k, partition in partitions.items():  
@@ -151,12 +152,23 @@ if __name__ == "__main__":
     print("npartitions: ", npartitions)
     buckets = {}
 
-    outputs = []
+    outputs_ids = []
     for partition in dataset.iter_batches(batch_size=1000):
-        outputs.append(map.remote(partition, buckets=buckets))
+        outputs_ids.append(map.remote(partition, buckets=buckets))
 
-    map_output = [buckets.update(out) for out in ray.get(outputs)]
-    result = reduce.remote(buckets)
-    ray.get(result)
+    # map_output = [buckets.update(out) for out in ray.get(outputs)]
+    results = []
+    step = 4
+    import math
+    for i in range(math.ceil(len(outputs_ids)/step)):
+        if len(outputs_ids) < step:
+            step = len(outputs_ids)
+        ready_ids, remaining_ids = ray.wait(outputs_ids, num_returns=step, timeout=None)
+        print(len(ready_ids), len(remaining_ids)) 
+        for ready_id in ready_ids:
+            result = reduce.remote(ready_id)
+            outputs_ids.remove(ready_id)
+            results.append(result)
+    ray.get(results)
     
     logger.debug(f"Distributed execution: {(time.time() - s):.3f}")

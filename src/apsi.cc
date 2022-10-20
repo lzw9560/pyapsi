@@ -256,25 +256,27 @@ class APSIServer {
     void add_items(const py::list& items_with_label) {
         vector<pair<Item, Label>> items;
         for (py::handle item_label : items_with_label) {
-            cout << item_label << "\n";
+            // cout << item_label << "\n";
             pair<string, string> item_pair;
             item_pair = item_label.cast<std::pair<string, string>>();
-            cout << "pair: " << item_pair.first << " : " << item_pair.second
-                 << "\n";
+            // cout << "pair: " << item_pair.first << " : " << item_pair.second
+            //      << "\n";
             // item
             string input_item = item_pair.first;
-            cout << "imput itam: " << input_item << "\n";
+            // cout << "input item: " << input_item << "\n";
             Item item(input_item);
 
             // label
             std::vector<unsigned char> label(64);
             std::copy(item_pair.second.begin(), item_pair.second.end(),
                       label.data());
-            cout << "label data: " << label.data() << "\n";
+            // cout << "label data: " << label.data() << "\n";
             // push back
             items.push_back({item, label});
         }
+
         _db->insert_or_assign(items);
+        cout << "Insert item count: " << items.size() << "\n";
     }
 
     void add_unlabeled_items(const py::list& input_items) {
