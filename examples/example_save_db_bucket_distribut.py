@@ -11,6 +11,7 @@
 # to sender
 
 from os import path
+import os
 import sys
 import time
 from hashlib import blake2b
@@ -123,10 +124,22 @@ def map(data, buckets):
 def encrypt(partition, k):
     # server
     apsi_server = LabeledServer()
-    apsi_server.init_db(params_string, max_label_length=64)
-    apsi_server.add_items(partition)
+    
     print(f"encrypt bucket: {k}")
     db_file_path = "./data/dis_apsidb/apsi_%s.db"%k
+    if not os.path.isdir(path.dirname(db_file_path)):
+        os.makedirs(path.dirname(db_file_path))
+        
+    if os.path.isfile(db_file_path):
+        # load db and insert
+        print("load db and insert items")
+        apsi_server.load_db(db_file_path=db_file_path)
+    else:
+        # init db
+        print("init db and insert items")
+        apsi_server.init_db(params_string, max_label_length=64)
+
+    apsi_server.add_items(partition)
     apsi_server.save_db(db_file_path=db_file_path)
     return db_file_path
 
@@ -135,6 +148,7 @@ def encrypt(partition, k):
 def reduce(partitions):
     # print("partitions")
     print(type(partitions), len(partitions))
+    logger.debug(f"{type(partitions)} partitions: {len(partitions)}")
     outputs = []
     for k, partition in partitions.items():  
         r = encrypt.remote(partition, k)
