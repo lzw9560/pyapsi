@@ -238,6 +238,7 @@ class APSIServer {
             _db = make_shared<SenderDB>(move(data));
             ifs.close();
         } catch (const exception& e) {
+            std::cout << e.what() << std::endl;
             throw runtime_error("Failed loading database");
         }
     }

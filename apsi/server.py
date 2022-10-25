@@ -16,6 +16,9 @@ from pathlib import Path
 
 from pyapsi import APSIServer as _Server
 
+from pyapsi.utils import _set_log_level as set_log_level
+
+set_log_level("all")
 
 class _BaseServer(_Server):
     db_initialized: bool = False

@@ -17,8 +17,6 @@ import time
 from hashlib import blake2b
 from loguru import logger
 
-# logger.remove()
-# logger.add(sys.stdout, colorize=True)
 
 from pathlib import Path
 
@@ -31,10 +29,28 @@ from dataset.dataset import Dataset
 print(str(Path(here) / "apsi.db"))
 
 here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
-from apsi.utils import _query
+from apsi.utils import _query, set_log_level
 from apsi.client import LabeledClient
 from apsi.server import LabeledServer
 
+set_log_level("all")
+
+def hash_sort(ds):
+    """
+    1. hash item
+    2. sort by hash_item
+
+    :param ds: _description_
+    :type ds: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+    ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+    ds = ds.sort("hash_item")
+    ds.schema()
+    print("***")
+    ds.show(2) 
+    return ds 
 
 def read_csv(data_path):
     print(data_path)
@@ -47,56 +63,37 @@ def read_csv(data_path):
     print("***")
     logger.debug("The CSV file reading {} strip data takes {}s:".format(ds.count(), time.time() - start))
 
-
-    ## hash sort
-    # Add a new column equal to hash item.
-    # ds = ds.add_column(
-    #     "hash_item", lambda df: df["item"]
-    # )
-    ds.schema()
-    print("add column ***")
-    ds.show(2)
-    print("add column ***")
-    # TODO 并行优化
-    ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
-    # ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
-
-    ds.schema()
-    print("hash item ***")
-    ds.show(2)
-    print("hash item ***")
-    ds = ds.sort("hash_item")
-    ds.schema()
-    print("***")
-    ds.show(2) 
     return ds
 
 
-# ds = ds.drop_columns("hash_item")
-# ds.schema()
-# print("***")
-# ds.show(2)
+def pre_data(data_path):
+    ds = read_csv(data_path=data_path)
+    ds = hash_sort(ds)
+    return ds
+    
 
-params_string = """{
+# 100k-1
+params_string = """
+{
     "table_params": {
         "hash_func_count": 1,
-        "table_size": 1638,
-        "max_items_per_bin": 8100
+        "table_size": 409,
+        "max_items_per_bin": 20
     },
     "item_params": {
         "felts_per_item": 5
     },
     "query_params": {
-        "ps_low_degree": 310,
-        "query_powers": [ 1, 4, 10, 11, 28, 33, 78, 118, 143, 311, 1555]
+        "ps_low_degree": 0,
+        "query_powers": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
     },
     "seal_params": {
-        "plain_modulus_bits": 22,
-
-        "poly_modulus_degree": 8192,
-        "coeff_modulus_bits": [ 56, 56, 56, 32 ]
+        "plain_modulus": 65537,
+        "poly_modulus_degree": 2048,
+        "coeff_modulus_bits": [ 48 ]
     }
 }
+
 """
 
 
@@ -104,9 +101,11 @@ params_string = """{
 import ray
 
 @ray.remote
-def map(data, buckets):
+def map(data):
     # print(type(data), data.count())
     # outputs = [list() for _ in range(npartitions)]
+    set_log_level("all")
+    buckets = {}
     outputs = buckets
     # print("output len: ", len(outputs))
     for idx, row in data.iterrows():
@@ -115,31 +114,38 @@ def map(data, buckets):
         row = row.drop(labels="hash_item")
         if outputs.get(index_key, None) is None:
             outputs[index_key] = []
+
         outputs[index_key].append(row)
     logger.debug(f"outputs type: {type(outputs)}, size: {len(outputs)}")
     # print(len(outputs))
     return outputs
 
-@ray.remote
-def encrypt(partition, k):
-    # server
+def get_db(db_file_path):
+    set_log_level("all")
     apsi_server = LabeledServer()
-    
-    print(f"encrypt bucket: {k}")
-    db_file_path = "./data/dis_apsidb/apsi_%s.db"%k
-    if not os.path.isdir(path.dirname(db_file_path)):
-        os.makedirs(path.dirname(db_file_path))
-        
     if os.path.isfile(db_file_path):
-        # load db and insert
-        print("load db and insert items")
+        # load db 
+        # apsi_server.init_db(params_string, max_label_length=64)
         apsi_server.load_db(db_file_path=db_file_path)
+        time.sleep(1)
     else:
         # init db
-        print("init db and insert items")
         apsi_server.init_db(params_string, max_label_length=64)
+    return apsi_server
+output_dir = "./data/dis_apsidb/"
+@ray.remote
+def encrypt(partition, k):
+    set_log_level("all")
+    # server
+    db_file_path = f"{output_dir}{k}.db"
+    print(f"encrypt bucket: {k}, db path: {db_file_path}")
+    if not os.path.isdir(path.dirname(db_file_path)):
+        os.makedirs(path.dirname(db_file_path))
+    apsi_server = get_db(db_file_path)
+    data = [(p["item"], p["label"]) for p in partition]
+    print(data)
+    apsi_server.add_items(data)
 
-    apsi_server.add_items(partition)
     apsi_server.save_db(db_file_path=db_file_path)
     return db_file_path
 
@@ -147,42 +153,70 @@ def encrypt(partition, k):
 @ray.remote
 def reduce(partitions):
     # print("partitions")
+    set_log_level("all")
     print(type(partitions), len(partitions))
     logger.debug(f"{type(partitions)} partitions: {len(partitions)}")
     outputs = []
     for k, partition in partitions.items():  
-        r = encrypt.remote(partition, k)
-        outputs.append(ray.get(r))
-    
+        result = encrypt.remote(partition, k)
+        outputs.append(result)
+    ray.get(outputs)
     return outputs
 
-if __name__ == "__main__":
+def display(dir_path=""):
+    g = os.walk(dir_path)  
+    fl = []
+    for path,dir_list,file_list in g:  
+        for file_name in file_list:  
+            print(os.path.join(path, file_name) )
+            fl.append(os.path.join(path, file_name))
+    return fl
+
+def load_file(path):
+    fl = display(path)
+    i = 0
+    for f in fl:
+        apsi_server = get_db(f)
+        i += 1
+        print(i, apsi_server)
+        del apsi_server
+
+
+def run(npartitions, step, data_path):
     s = time.time()
-    npartitions = 16**2
-    tmp = Path(here_parent + "/data")
-    data_path = str(tmp/"db_10w.csv")
-    dataset = read_csv(data_path=data_path  )
+    dataset = pre_data(data_path)
     print(dataset.schema(), dataset.count())
     print("npartitions: ", npartitions)
     buckets = {}
-
     outputs_ids = []
     for partition in dataset.iter_batches(batch_size=1000):
-        outputs_ids.append(map.remote(partition, buckets=buckets))
+        outputs_ids.append(map.remote(partition))
 
     # map_output = [buckets.update(out) for out in ray.get(outputs)]
     results = []
-    step = 4
     import math
-    for i in range(math.ceil(len(outputs_ids)/step)):
+    for _ in range(math.ceil(len(outputs_ids)/step)):
         if len(outputs_ids) < step:
             step = len(outputs_ids)
-        ready_ids, remaining_ids = ray.wait(outputs_ids, num_returns=step, timeout=None)
-        print(len(ready_ids), len(remaining_ids)) 
+        ready_ids, remaining_ids = ray.wait(outputs_ids, num_returns=step, timeout=100)
+        print(f"redy ids: {len(ready_ids)}, remaining ids: {len(remaining_ids)}") 
         for ready_id in ready_ids:
+            # print(ready_id)
             result = reduce.remote(ready_id)
             outputs_ids.remove(ready_id)
             results.append(result)
     ray.get(results)
+    print((len(results)))
     
     logger.debug(f"Distributed execution: {(time.time() - s):.3f}")
+
+if __name__ == "__main__":
+    npartitions = 16**2
+    step = 100
+    tmp = Path(here_parent + "/data")
+    data_path = str(tmp/"db_10w.csv")
+    dataset = read_csv(data_path=data_path  )
+
+    run(npartitions=npartitions, step=step, data_path=data_path)
+    
+    load_file(path=output_dir)

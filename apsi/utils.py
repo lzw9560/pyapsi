@@ -10,7 +10,13 @@ from typing import List, Union, Dict
 from apsi.server import LabeledServer, UnlabeledServer
 from apsi.client import LabeledClient, UnlabeledClient
 
+# from pyapsi.utils import _set_log_level as set_log_level
+# from pyapsi import APSIServer as _Server
+from pyapsi import utils
 
+def set_log_level(level):
+    return utils._set_log_level(level)
+    
 
 def _query(
     client: Union[UnlabeledClient, LabeledClient],
