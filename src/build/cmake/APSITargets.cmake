@@ -47,7 +47,7 @@ add_library(APSI::apsi SHARED IMPORTED)
 set_target_properties(APSI::apsi PROPERTIES
   INTERFACE_COMPILE_FEATURES "cxx_std_17"
   INTERFACE_COMPILE_OPTIONS "-DHAVE_CONFIG;-DUSE_SECURE_SEED;-DUSE_ENDO=true;-D__LINUX__;-D_AMD64_"
-  INTERFACE_INCLUDE_DIRECTORIES "/Users/lizhiwei/project/code/yuanyu/APSI/common;/usr/local/Cellar/tclap/1.2.5/include;/Users/lizhiwei/project/code/yuanyu/APSI/common;/usr/local/Cellar/cppzmq/4.8.1/include/;/usr/local/Cellar/zeromq/4.3.4/include/zmq.h;/Users/lizhiwei/project/code/yuanyu/APSI/common;/usr/local/Cellar/zeromq/4.3.4/include;/Users/lizhiwei/project/code/yuanyu/APSI/common;/usr/local/Cellar/flatbuffers/2.0.8/include/;/Users/lizhiwei/project/code/yuanyu/APSI/common;/home/linuxbrew/.linuxbrew/include/;/Users/lizhiwei/project/code/yuanyu/APSI/sender;/Users/lizhiwei/project/code/yuanyu/APSI/receiver;/Users/lizhiwei/project/code/yuanyu/APSI/build/common;/Users/lizhiwei/project/code/yuanyu/APSI/build/sender;/Users/lizhiwei/project/code/yuanyu/APSI/build/_deps/jsoncpp-src/include"
+  INTERFACE_INCLUDE_DIRECTORIES "/Users/lizhiwei/project/code/yuanyu/pyapsi/src/common;/usr/local/Cellar/tclap/1.2.5/include;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/common;/usr/local/Cellar/cppzmq/4.8.1/include/;/usr/local/Cellar/zeromq/4.3.4/include/zmq.h;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/common;/usr/local/Cellar/zeromq/4.3.4/include;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/common;/usr/local/Cellar/flatbuffers/2.0.8/include/;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/common;/home/linuxbrew/.linuxbrew/include/;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/sender;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/receiver;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/build/common;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/build/sender;/Users/lizhiwei/project/code/yuanyu/pyapsi/src/build/_deps/jsoncpp-src/include"
   INTERFACE_LINK_DIRECTORIES "/usr/local/lib"
   INTERFACE_LINK_LIBRARIES "Threads::Threads;SEAL::seal;Kuku::kuku;jsoncpp;log4cplus::log4cplus;zmq"
 )
@@ -55,7 +55,7 @@ set_target_properties(APSI::apsi PROPERTIES
 # Import target "APSI::apsi" for configuration "Release"
 set_property(TARGET APSI::apsi APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(APSI::apsi PROPERTIES
-  IMPORTED_LOCATION_RELEASE "/Users/lizhiwei/project/code/yuanyu/APSI/build/lib/libapsi-0.8.0.8.2.dylib"
+  IMPORTED_LOCATION_RELEASE "/Users/lizhiwei/project/code/yuanyu/pyapsi/src/build/lib/libapsi-0.8.0.8.2.dylib"
   IMPORTED_SONAME_RELEASE "@rpath/libapsi-0.8.0.8.2.dylib"
   )
 

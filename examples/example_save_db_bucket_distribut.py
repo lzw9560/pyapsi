@@ -43,7 +43,7 @@ SEVERAL = 2
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 
-output_dir = "./data/dis_apsidb/"
+output_dir = "./data/linux/dis_apsidb/"
 
 
 def hash_sort(ds):
@@ -106,8 +106,7 @@ def get_params(params_path=None):
         params_path = str(Path(here_parent) / "src/parameters/100k-1.json")
     print(params_path)
     with open(params_path, "r") as f:
-        print(1)
-        params_string = json.load(f)
+        params_string = json.dumps(json.load(f))
     return params_string
 
 
@@ -154,7 +153,7 @@ def get_apsi_db(db_file_path):
 
 @ray.remote
 def encrypt(k, partition):
-    set_log_level("all")
+    # set_log_level("all")
     # server
     db_file_path = f"{output_dir}{k}.db"
     print(f"encrypt bucket: {k}, db path: {db_file_path}")
@@ -168,21 +167,21 @@ def encrypt(k, partition):
     return db_file_path
 
 
-@ray.remote
-class AsyncEncryptActor:
-    async def run_task(self, k, partition):
-        set_log_level("all")
-        # server
-        db_file_path = f"{output_dir}{k}.db"
-        print(f"encrypt bucket: {k}, db path: {db_file_path}")
-        if not os.path.isdir(path.dirname(db_file_path)):
-            os.makedirs(path.dirname(db_file_path))
-        apsi_server = get_apsi_db(db_file_path)
-        data = [(p["item"], p["label"]) for p in partition]
-        # print(data)
-        apsi_server.add_items(data)
-        apsi_server.save_db(db_file_path=db_file_path)
-        return db_file_path
+# @ray.remote
+# class AsyncEncryptActor:
+#     async def run_task(self, k, partition):
+#         set_log_level("all")
+#         # server
+#         db_file_path = f"{output_dir}{k}.db"
+#         print(f"encrypt bucket: {k}, db path: {db_file_path}")
+#         if not os.path.isdir(path.dirname(db_file_path)):
+#             os.makedirs(path.dirname(db_file_path))
+#         apsi_server = get_apsi_db(db_file_path)
+#         data = [(p["item"], p["label"]) for p in partition]
+#         # print(data)
+#         apsi_server.add_items(data)
+#         apsi_server.save_db(db_file_path=db_file_path)
+#         return db_file_path
 
 @ray.remote
 def reduce(partitions):
@@ -191,7 +190,7 @@ def reduce(partitions):
     logger.debug(f"{type(partitions)} partitions: {len(partitions)}")
     outputs = []
     for k, partition in partitions.items():
-        result = encrypt.remote(partition, k)
+        result = encrypt.remote(k, partition)
         outputs.append(result)
     ray.get(outputs)
     return outputs
@@ -213,8 +212,6 @@ def load_file(path):
     for f in fl:
         apsi_server = get_apsi_db(f)
         i += 1
-        print(i, apsi_server)
-        del apsi_server
 
 
 def run(npartitions, step, data_path):
@@ -256,4 +253,4 @@ if __name__ == "__main__":
 
     run(npartitions=npartitions, step=step, data_path=data_path)
 
-    load_file(path=output_dir)
+    # load_file(path=output_dir)
