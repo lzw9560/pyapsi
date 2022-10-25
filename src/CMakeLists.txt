@@ -513,6 +513,10 @@ target_include_directories(pyapsi PUBLIC
 target_include_directories(pyapsi PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/common>
     $<INSTALL_INTERFACE:${APSI_INCLUDES_INSTALL_DIR}>)
-target_link_libraries(pyapsi PRIVATE apsi)
+target_link_libraries(
+    pyapsi 
+    PRIVATE apsi
+    PUBLIC jsoncpp
+)
 
 ### pybind ###
