@@ -11,20 +11,19 @@
 # to sender
 
 import json
-import ray
-from apsi.server import LabeledServer
-from apsi.client import LabeledClient
-from apsi.utils import _query, set_log_level
-from dataset.dataset import Dataset
-from os import path
 import os
 import sys
 import time
 from hashlib import blake2b
-from loguru import logger
-
-
+from os import path
 from pathlib import Path
+
+import ray
+from apsi.client import LabeledClient
+from apsi.server import LabeledServer
+from apsi.utils import _query, set_log_level
+from dataset.dataset import Dataset
+from loguru import logger
 
 here = path.abspath(path.join(path.dirname(__file__)))
 print(here)
@@ -37,14 +36,16 @@ here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 
 set_log_level("all")
 
-PARAMS_PATH = str(Path(here_parent) / "src/parameters/100k-1.json")
+PARAMS_PATH = str(Path(here_parent) / "src/parameters/100K-1.json")
 UNIT = 16
 SEVERAL = 2
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 
-output_dir = "./data/linux/dis_apsidb/"
+output_dir = "./data/100w/apsidb/"
 
+tmp = Path(here_parent + "/data")
+input_data_path = str(tmp/"db_100w.csv")
 
 def hash_sort(ds):
     """
@@ -64,6 +65,12 @@ def hash_sort(ds):
     ds.show(2)
     return ds
 
+from pyarrow import csv
+from pyarrow._csv import ReadOptions
+
+ro = ReadOptions()
+ro.block_size = 10 << 20
+
 
 def read_csv(data_path):
     """read data from csv.
@@ -76,7 +83,9 @@ def read_csv(data_path):
     print(data_path)
     start = time.time()
     dataset = Dataset()
-    ds = dataset.read(format="csv", paths=data_path, parallelism=500)
+    # ds = dataset.read(format="csv", paths=data_path, parallelism=500)
+
+    ds = ray.data.read_csv(paths=[data_path], **{"read_options": ro})
     ds.schema()
     print("***")
     ds.show(2)
@@ -143,7 +152,10 @@ def get_apsi_db(db_file_path):
     params_string = get_params(params_path=PARAMS_PATH)
     if os.path.isfile(db_file_path):
         # load db
-        apsi_server.load_db(db_file_path=db_file_path)
+        try:
+            apsi_server.load_db(db_file_path=db_file_path)
+        except Exception as e:
+            print(f"!!!!!!!!!!Error: {str(e)}, {db_file_path}")
     else:
         # init db
         apsi_server.init_db(params_string, max_label_length=64)
@@ -162,8 +174,9 @@ def encrypt(k, partition):
     apsi_server = get_apsi_db(db_file_path)
     data = [(p["item"], p["label"]) for p in partition]
     # print(data)
-    apsi_server.add_items(data)
-    apsi_server.save_db(db_file_path=db_file_path)
+    if data:
+        apsi_server.add_items(data)
+        apsi_server.save_db(db_file_path=db_file_path)
     return db_file_path
 
 
@@ -212,6 +225,7 @@ def load_file(path):
     for f in fl:
         apsi_server = get_apsi_db(f)
         i += 1
+    print(i)
 
 
 def run(npartitions, step, data_path):
@@ -241,16 +255,15 @@ def run(npartitions, step, data_path):
     ray.get(results)
     print((len(results)))
 
-    logger.debug(f"Distributed execution: {(time.time() - s):.3f}")
+    logger.debug(f">>>>>>>>>. Distributed execution: {(time.time() - s):.3f}")
 
 
 if __name__ == "__main__":
     npartitions = 16**2
-    step = 100
-    tmp = Path(here_parent + "/data")
-    data_path = str(tmp/"db_10w.csv")
-    dataset = read_csv(data_path=data_path)
+    step = 1
+    # data_path = str(tmp/"db_10w.csv")
+    # dataset = read_csv(data_path=input_data_path)
 
-    run(npartitions=npartitions, step=step, data_path=data_path)
+    run(npartitions=npartitions, step=step, data_path=input_data_path)
 
-    # load_file(path=output_dir)
+    load_file(path=output_dir)
