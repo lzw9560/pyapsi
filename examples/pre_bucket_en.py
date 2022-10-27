@@ -120,7 +120,7 @@ class AsyncEncryptActor:
             # print(data)
             apsi_server.add_items(data)
             apsi_server.save_db(db_file_path=db_file_path)
-            os.remove(bucket_tmp)  # remove tmp
+            # os.remove(bucket_tmp)  # remove tmp
             return db_file_path
 
 

@@ -146,7 +146,7 @@ def load_bucket_tmp(tmp_path):
 
 
 @ray.remote
-def map(data):
+def map2(data):
     """Map: pickle item into bucket
     1. calc index key
     2. bucket = buckets[index_key]
@@ -186,6 +186,48 @@ def map(data):
     print(f">>> Map execution: {(time.time() - s):.3f}")
     return m_buckets
 
+@ray.remote
+def map(data):
+    """Map: pickle item into bucket
+    1. calc index key
+    2. bucket = buckets[index_key]
+    3. drop hash_item
+    4. put bucket   
+
+    :param data: _description_
+    :type data: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+    s = time.time()
+    set_log_level("all")
+    m_buckets = {}
+
+    for idx, row in data.iterrows():
+        index_key = row["hash_item"][:SEVERAL]
+        row = row.drop(labels="hash_item")
+        if m_buckets.get(index_key, None) is None:
+            m_buckets[index_key] = []
+        m_buckets[index_key].append(row)
+
+    for k, v in m_buckets.items():
+
+        tmp_path = f"{bucket_tmp_path}/parquet/{k}"
+        if not os.path.isdir(path.dirname(tmp_path)):
+            os.makedirs(path.dirname(tmp_path))
+
+        if os.path.isfile(tmp_path):
+            tmp_data = load_bucket_tmp(tmp_path=tmp_path)
+            print(f"{type(tmp_data)}, add items: {len(tmp_data)}")
+            v.extend(tmp_data)
+            # print(v)
+            # v = v.extend([t for t in tmp_data if t not in v])
+            print(f"total items: {len(v)}")
+        # save_bucket_tmp(tmp_path, v)
+        v.write_parquet(path=tmp_path, try_create_dir=True )
+
+    print(f">>> Map execution: {(time.time() - s):.3f}")
+    return m_buckets
 
 @ray.remote
 def run():
