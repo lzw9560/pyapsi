@@ -49,14 +49,14 @@ BUCKET_CAPACITY = UNIT ** SEVERAL
 
 pandas.cut
 # output_dir = "./data/10w/apsidb"
-output_dir = "./data/10w/apsidb"
+output_dir = "./data/100w/apsidb"
 
 if not os.path.isdir(output_dir):
     os.makedirs(output_dir)
 
 tmp = Path(here_parent + "/data")
 # input_data_path = str(tmp/"db_10w.csv")
-input_data_path = str(tmp/"db_10w.csv")
+input_data_path = str(tmp/"db_100w.csv")
 bucket_tmp_path = str(tmp/"bucket_tmp")
 
 
@@ -73,6 +73,37 @@ def load_bucket_tmp(tmp_path):
     with open(tmp_path, "rb") as f:
         data = pickle.load(f)
     return data
+
+
+def get_params(params_path=None):
+    """Get APSI parameters string.
+
+    :param params_path: _description_, defaults to None
+    :type params_path: _type_, optional
+    :return: _description_
+    :rtype: _type_
+    """
+
+    if not params_path:
+        params_path = str(Path(here_parent) / "src/parameters/100k-1.json")
+    print(params_path)
+    with open(params_path, "r") as f:
+        params_string = json.dumps(json.load(f))
+    return params_string
+
+
+def get_db(db_file_path):
+    set_log_level("all")
+    params_string = get_params(params_path=PARAMS_PATH)
+    apsi_server = LabeledServer()
+    if os.path.isfile(db_file_path):
+        # load db
+        apsi_server.load_db(db_file_path=db_file_path)
+        time.sleep(1)
+    else:
+        # init db
+        apsi_server.init_db(params_string, max_label_length=64)
+    return apsi_server
 
 
 @ray.remote
@@ -110,9 +141,18 @@ class Bucket:
         return tmp_path
 
     def encrypt(self, name, dataset):
+        # read
         tmp_path = self.bucket(name, dataset)
-        # dataset = ray.data.read_parquet(paths=[partquet_path])
         dataset = load_bucket_tmp(tmp_path=tmp_path)
+
+        db_file_path = f"{output_dir}/{name}.db"
+        if not os.path.isdir(path.dirname(db_file_path)):
+            os.makedirs(path.dirname(db_file_path))
+        apsi_server = get_db(db_file_path)
+
+        data = [(d["item"], d["label"]) for d in dataset]
+        apsi_server.add_items(data)
+        apsi_server.save_db(db_file_path=db_file_path)
         return len(dataset)
 
 
@@ -213,29 +253,6 @@ class Supervisor:
         ds = self.hash_sort(ds)
         print(ds.show(1))
         return ds
-
-    def work3(self):
-        import pyarrow as pa
-        import pandas as pd
-        tasks = []
-        i = 0
-        l = 0
-        bucket = []
-
-        for bin in self.bins:
-            ds = self.dataset.map_batches(
-                fn=lambda batch: [record for _, record in batch.iterrows(
-                ) if record["hash_item"][:len(bin)] == bin],
-                batch_format="native")
-            # noqa
-            print(ds.schema(), ds.count())
-            worker = Bucket.remote(name=bin)
-            ds = pd.Series.to_frame(ds)
-            ds = ds.from_pandas(ds)
-            print(ds.schema(), ds.count())
-            tasks.append(worker.bucket.remote(name=bin, dataset=ds))
-        return tasks
-        # return ray.get([b.bucket.remote() for b in self.buckets])
 
     def work(self):
         import pyarrow as pa
