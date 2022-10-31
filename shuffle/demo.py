@@ -47,10 +47,6 @@ print("***")
 logger.debug("The CSV file reading 10w strip data takes {}s:".format(time.time() - start))
 
 
-def fn(df):
-    
-    print(type(df["item"]), df['item'])
-    return df["item"] + "-" 
 ## hash sort
 # Add a new column equal to hash item.
 # ds = ds.add_column(
