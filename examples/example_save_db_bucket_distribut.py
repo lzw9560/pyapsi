@@ -185,7 +185,7 @@ def encrypt(k, partition):
 #     async def run_task(self, k, partition):
 #         set_log_level("all")
 #         # server
-#         db_file_path = f"{output_dir}{k}.db"
+#         db_file_path = f"{OUTPUT_DIR}{k}.db"
 #         print(f"encrypt bucket: {k}, db path: {db_file_path}")
 #         if not os.path.isdir(path.dirname(db_file_path)):
 #             os.makedirs(path.dirname(db_file_path))
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     npartitions = 16**2
     step = 1
     # data_path = str(tmp/"db_10w.csv")
-    # dataset = read_csv(data_path=input_data_path)
+    # dataset = read_csv(data_path=INPUT_DATA_PATH)
 
     run(npartitions=npartitions, step=step, data_path=input_data_path)
 

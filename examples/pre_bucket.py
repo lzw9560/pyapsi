@@ -43,7 +43,7 @@ BUCKET_CAPACITY = UNIT ** SEVERAL
 DB_TOTAL = '100w'
 tmp = Path(here_parent + "/data")
 input_data_path = str(tmp/f"db_{DB_TOTAL}.csv")
-# output_dir = f"./data/{DB_TOTAL}/apsidb"
+# OUTPUT_DIR = f"./data/{DB_TOTAL}/apsidb"
 bucket_tmp_path = f"./data/tmp_{DB_TOTAL}/m_buckets"
 
 

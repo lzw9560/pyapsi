@@ -10,9 +10,6 @@
 # distribution of block buckets
 # to sender
 
-from xml.etree.ElementInclude import include
-import pandas
-from pyarrow._csv import ReadOptions
 import json
 import os
 import sys
@@ -21,21 +18,22 @@ from hashlib import blake2b
 from os import path
 from pathlib import Path
 
+import cloudpickle as pickle
+import numpy as np
+import pandas
 import ray
+from loguru import logger
+from pyarrow._csv import ReadOptions
+
 from apsi.client import LabeledClient
 from apsi.server import LabeledServer
 from apsi.utils import _query, set_log_level
 from dataset.dataset import Dataset
-from loguru import logger
-import cloudpickle as pickle
-
-here = path.abspath(path.join(path.dirname(__file__)))
-print(here)
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
-print(str(Path(here) / "apsi.db"))
-
+here = path.abspath(path.join(path.dirname(__file__)))
+print(here)
 here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 
 set_log_level("all")
@@ -45,32 +43,30 @@ UNIT = 16
 SEVERAL = 2
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
-pandas.cut
 # OUTPUT_DIR = "./data/10w/apsidb"
-output_dir = "./data/100w/apsidb"
+OUTPUT_DIR = "./data/100w/apsidb"
 
-if not os.path.isdir(output_dir):
-    os.makedirs(output_dir)
+if not os.path.isdir(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
 
 tmp = Path(here_parent + "/data")
 # tmp = Path("/data")
 # INPUT_DATA_PATH = str(tmp/"db_10w.csv")
-input_data_path = str(tmp/"db_100w.csv")
-bucket_tmp_path = str(tmp/"bucket_tmp")
-
+INPUT_DATA_PATH = str(tmp / "db_100w.csv")
+BUCKET_TMP_PATH = str(tmp / "bucket_tmp")
 
 ro = ReadOptions()
 ro.block_size = 10 << 20
 
 
-def save_bucket_tmp(tmp_path, data):
+def save_block(tmp_path, data):
     if not os.path.isdir(path.dirname(tmp_path)):
         os.makedirs(tmp_path)
     with open(tmp_path, "wb") as f:
         pickle.dump(data, f)
 
 
-def load_bucket_tmp(tmp_path):
+def load_block(tmp_path):
     with open(tmp_path, "rb") as f:
         data = pickle.load(f)
     return data
@@ -107,39 +103,28 @@ def get_db(db_file_path):
 
 
 @ray.remote
-def get_bucket_dataset(dataset, bucket_value):
-    print(bucket_value, type(bucket_value))
-    ds = dataset.filter(lambda record: int(
-        record["hash_item"][:2], 16) == bucket_value)
-    ds = ds.drop_columns("hash_item")
-    return ds
-
-
-@ray.remote
-class Bucket:
+class Worker:
     def __init__(self, name):
         self.name = name
-        # self.dataset = dataset
-        # self.dataset = self.get_bucket_dataset(
-        #     bucket_name=name, dataset=dataset)
 
-    def get_bucket_dataset(self, bucket_name, dataset):
-        ds = dataset.map_batches(lambda batch: [record for _, record in batch.iterrows() if record["hash_item"][:len(bucket_name)] == bucket_name])  # noqa
+    def get_block_dataset(self, bucket_name, dataset):
+        ds = dataset.map_batches(lambda batch: [record for _, record in batch.iterrows() if
+                                                record["hash_item"][:len(bucket_name)] == bucket_name])  # noqa
         return ds
 
-    def bucket(self, name, dataset):
+    def block_cut(self, name, dataset):
         # tmp_path = f"{BUCKET_TMP_PATH}/{name}"
         tmp_path = "{bucket_tmp_path}/{name}".format(
-            bucket_tmp_path=bucket_tmp_path, name=name)
-        save_bucket_tmp(tmp_path=tmp_path, data=dataset)
+            bucket_tmp_path=BUCKET_TMP_PATH, name=name)
+        save_block(tmp_path=tmp_path, data=dataset)
         return tmp_path
 
     def encrypt(self, name, dataset):
         # read
-        tmp_path = self.bucket(name, dataset)
-        dataset = load_bucket_tmp(tmp_path=tmp_path)
+        tmp_path = self.block_cut(name, dataset)
+        dataset = load_block(tmp_path=tmp_path)
 
-        db_file_path = f"{output_dir}/{name}.db"
+        db_file_path = f"{OUTPUT_DIR}/{name}.db"
         if not os.path.isdir(path.dirname(db_file_path)):
             os.makedirs(path.dirname(db_file_path))
         apsi_server = get_db(db_file_path)
@@ -154,33 +139,37 @@ class Bucket:
 class Supervisor:
 
     def __init__(self, data_path="", several=2) -> None:
+        self.several = several
         self.n_bucket = 16 ** several
         self.dataset = self.pre_data(data_path=data_path)
-        # self.buckets = self.pre_buckets(n_bucket=self.n_bucket)
         self.bins = self.get_bins()
 
-        # self.workers = [Worker.remote() for _ in range(self.bins)]
-
     def get_bins(self):
-        import numpy as np
+        several = self.several
         # [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**2)]
         # self.bins = [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, self.n_bucket)]
         # bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**4)])
-        self.bins = np.array([hex(bin)[2:] if len(
-            hex(bin)[2:]) == 2 else f"0{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
+        self.bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) == several else f"{'0'*(several-len(hex(bin)[2:]))}{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
+        # self.bins = np.array([hex(bin)[2:]  for bin in range(0, self.n_bucket)])
         # self.bins = [bin for bin in range(1, self.n_bucket)]
+
+        print(several, self.n_bucket)
+        print(self.bins)
+
+        print(len(self.bins))
+        time.sleep(1)
         return self.bins
 
     def get_bucket(self, bucket_name, dataset):
         # bucket_ds = self.get_bucket_dataset(bucket_name=bucket_name)
         # print("=-=-=", bucket_ds.count())
-        bucket = Bucket.remote(name=bucket_name, dataset=dataset)
+        bucket = Worker.remote(name=bucket_name, dataset=dataset)
         return bucket
 
     def set_bucket(self, bucket_name, dataset):
         # bucket_ds = self.get_bucket_dataset(bucket_name=bucket_name)
         # print("=-=-=", bucket_ds.count())
-        bucket = Bucket.remote(name=bucket_name, dataset=dataset)
+        bucket = Worker.remote(name=bucket_name, dataset=dataset)
         return bucket
 
     def pre_buckets(self, n_bucket):
@@ -249,36 +238,36 @@ class Supervisor:
         return ds
 
     def work(self):
-        import pyarrow as pa
         tasks = []
         i = 0
         l = 0
         block = []
         for record in self.dataset.iter_rows():
+            if i > self.n_bucket:
+                break
             bin = self.bins[i]
-            if record["hash_item"][:2] == bin:
+            if record["hash_item"][:self.several] == bin:
                 block.append(dict(record))
             else:
                 i += 1
                 # save bucket and encrypt
-                worker = Bucket.remote(name=bin)
+                worker = Worker.remote(name=bin)
                 tasks.append(worker.encrypt.remote(name=bin, dataset=block))
                 l += len(block)
-                print(i-1, bin, len(block), block[:1], block[-1:])
+                print(i - 1, bin, len(block), block[:1], block[-1:])
                 block = [dict(record)]
         print(i, bin, len(block), block[:1], block[-1:])
         # last bucket
-        worker = Bucket.remote(name=bin)
+        worker = Worker.remote(name=bin)
         tasks.append(worker.encrypt.remote(name=bin, dataset=block))
         l += len(block)
         return tasks
 
 
 if __name__ == "__main__":
-
     s = time.time()
-    # ray.init()
-    ray.init(address='auto', namespace="pyapsi")
+    ray.init()
+    # ray.init(address='auto', namespace="pyapsi")
     # ray.init(address='ray://192.168.99.26:10001/')
     # ray.init(address='ray://118.190.39.100:30007/')
     # ray.init(address='ray://118.190.39.100:37937/',runtime_env={"py_modules": [apsi], "excludes": []}, namespace="pyapsi")
@@ -299,7 +288,7 @@ if __name__ == "__main__":
     #                  "*.db"]
     #          },
     #          namespace="pyapsi")
-    sup = Supervisor.remote(data_path=input_data_path, several=SEVERAL)
+    sup = Supervisor.remote(data_path=INPUT_DATA_PATH, several=SEVERAL)
     tasks = sup.work.remote()
     # ready_ids, remaining_ids = ray.wait(tasks, num_returns=10, timeout=100)
 

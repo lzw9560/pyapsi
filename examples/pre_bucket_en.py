@@ -107,7 +107,7 @@ class AsyncEncryptActor:
         else:
             print("started")
             # server
-            # output_dir
+            # OUTPUT_DIR
             # db_file_path = "./data/tmp/db/apsi_%s.db" % bucket_name
             db_file_path = f"{output_dir}/{bucket_name}.db"
             print(f"encrypt bucket: {bucket_name}, db path: {db_file_path}")

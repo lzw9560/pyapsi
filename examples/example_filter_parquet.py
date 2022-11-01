@@ -47,14 +47,14 @@ SEVERAL = 2
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 pandas.cut
-# output_dir = "./data/10w/apsidb"
+# OUTPUT_DIR = "./data/10w/apsidb"
 output_dir = "./data/10w/apsidb"
 
 if not os.path.isdir(output_dir):
     os.makedirs(output_dir)
 
 tmp = Path(here_parent + "/data")
-# input_data_path = str(tmp/"db_10w.csv")
+# INPUT_DATA_PATH = str(tmp/"db_10w.csv")
 input_data_path = str(tmp/"db_10w.csv")
 bucket_tmp_path = str(tmp/"bucket_tmp")
 
@@ -122,7 +122,7 @@ class Supervisor:
         # self.buckets = self.pre_buckets(n_bucket=self.n_bucket)
         self.bins = self.get_bins()
 
-        # self.workers = [Bucket.remote() for _ in range(self.bins)]
+        # self.workers = [Worker.remote() for _ in range(self.bins)]
 
     def get_bins(self):
         import numpy as np

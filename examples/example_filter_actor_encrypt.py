@@ -45,14 +45,14 @@ SEVERAL = 2
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 
-# output_dir = "./data/10w/apsidb"
+# OUTPUT_DIR = "./data/10w/apsidb"
 output_dir = "./data/100w/apsidb"
 
 if not os.path.isdir(output_dir):
     os.makedirs(output_dir)
 
 tmp = Path(here_parent + "/data")
-# input_data_path = str(tmp/"db_10w.csv")
+# INPUT_DATA_PATH = str(tmp/"db_10w.csv")
 input_data_path = str(tmp/"db_100w.csv")
 
 
@@ -164,7 +164,7 @@ class AsyncBucketActor:
         ds = dataset.filter(
             lambda record: record["hash_item"][:2] == bucket_name)
         # ds = dataset.drop_columns("hash_item")
-        # tmp_path = f"{bucket_tmp_path}/parquet/{bucket_name}"
+        # tmp_path = f"{BUCKET_TMP_PATH}/parquet/{bucket_name}"
         # ds.write_parquet(path=tmp_path, try_create_dir=True )
         return ds
 
@@ -231,7 +231,7 @@ if __name__ == "__main__":
             bucket_name=bucket_value_hex, dataset=dataset)
 
         print("*** bucket ***: ", bucket_value_hex)
-        # tmp_path = f"{bucket_tmp_path}/{bucket_value_hex}"
+        # tmp_path = f"{BUCKET_TMP_PATH}/{bucket_value_hex}"
         encrypt = actor.run_encrypt.remote()
         # ray.get(encrypt)
         tasks.append(encrypt)
