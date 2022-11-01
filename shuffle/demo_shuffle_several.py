@@ -40,7 +40,7 @@ set_log_level("all")
 
 PARAMS_PATH = str(Path(here_parent) / "src/parameters/100K-1.json")
 UNIT = 16
-SEVERAL = 2
+SEVERAL = 4
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 # OUTPUT_DIR = "./data/10w/apsidb"
@@ -142,22 +142,23 @@ class Supervisor:
         self.several = several
         self.n_bucket = 16 ** several
         self.dataset = self.pre_data(data_path=data_path)
-        self.bins = self.get_bins()
+        # self.bins = self.get_bins()
 
     def get_bins(self):
         several = self.several
         # [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**2)]
         # self.bins = [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, self.n_bucket)]
         # bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**4)])
-        self.bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) == several else f"{'0'*(several-len(hex(bin)[2:]))}{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
+        self.bins = np.array([hex(bin)[2:] if len(hex(bin)[
+                             2:]) == several else f"{'0'*(several-len(hex(bin)[2:]))}{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
         # self.bins = np.array([hex(bin)[2:]  for bin in range(0, self.n_bucket)])
         # self.bins = [bin for bin in range(1, self.n_bucket)]
 
         print(several, self.n_bucket)
-        print(self.bins)
+        # print(self.bins)
 
-        print(len(self.bins))
-        time.sleep(1)
+        # print(len(self.bins))
+        # time.sleep(1)
         return self.bins
 
     def get_bucket(self, bucket_name, dataset):
@@ -237,6 +238,14 @@ class Supervisor:
         print(ds.show(1))
         return ds
 
+    def get_bin(self, i):
+        if len(hex(i)[2:]) == self.several:
+            bin = hex(i)[2:]
+        else:
+            bin = f"{'0'*(self.several-len(hex(i)[2:]))}{hex(i)[2:]}"
+        print("bin: ", bin)
+        return bin
+
     def work(self):
         tasks = []
         i = 0
@@ -245,7 +254,8 @@ class Supervisor:
         for record in self.dataset.iter_rows():
             if i > self.n_bucket:
                 break
-            bin = self.bins[i]
+            # bin = self.bins[i]
+            bin = self.get_bin(i)
             if record["hash_item"][:self.several] == bin:
                 block.append(dict(record))
             else:
