@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
+# demo_ray.py
 # @Author :  ()
 # @Link   : 
-# @Date   : 10/19/2022, 10:20:36 AM
+# @Date   : 10/14/2022, 2:58:31 PM
 
 # read
 # hash sort
@@ -11,7 +12,6 @@
 # to sender
 
 from os import path
-import os
 import sys
 import time
 from hashlib import blake2b
@@ -34,40 +34,40 @@ here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 from apsi.utils import _query
 from apsi.client import LabeledClient
 from apsi.server import LabeledServer
-# tmp = Path(here_parent + "/data")
-# data_path = str(tmp/"db_10w.csv")
-# print(data_path)
-# start = time.time()
-# dataset = Dataset()
-# ds = dataset.read(format="csv", paths=data_path, parallelism=500)
-# ds.schema()
-# print("***")
-# ds.show(2)
-# print("***")
-# logger.debug("The CSV file reading 10w strip data takes {}s:".format(time.time() - start))
+tmp = Path(here_parent + "/data")
+data_path = str(tmp/"db_10w.csv")
+print(data_path)
+start = time.time()
+dataset = Dataset()
+ds = dataset.read(format="csv", paths=data_path, parallelism=500)
+ds.schema()
+print("***")
+ds.show(2)
+print("***")
+logger.debug("The CSV file reading 10w strip data takes {}s:".format(time.time() - start))
 
 
-# ## hash sort
-# # Add a new column equal to hash item.
-# # ds = ds.add_column(
-# #     "hash_item", lambda df: df["item"]
-# # )
-# ds.schema()
-# print("add column ***")
-# ds.show(2)
-# print("add column ***")
-# # TODO 并行优化
-# ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
-# # ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+## hash sort
+# Add a new column equal to hash item.
+# ds = ds.add_column(
+#     "hash_item", lambda df: df["item"]
+# )
+ds.schema()
+print("add column ***")
+ds.show(2)
+print("add column ***")
+# TODO 并行优化
+ds = ds.map(lambda record: { "item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+# ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
 
-# ds.schema()
-# print("hash item ***")
-# ds.show(2)
-# print("hash item ***")
-# ds = ds.sort("hash_item")
-# ds.schema()
-# print("***")
-# ds.show(2)
+ds.schema()
+print("hash item ***")
+ds.show(2)
+print("hash item ***")
+ds = ds.sort("hash_item")
+ds.schema()
+print("***")
+ds.show(2)
 
 
 def read_csv(data_path):
@@ -113,27 +113,26 @@ def read_csv(data_path):
 # print("***")
 # ds.show(2)
 
-params_string = """
-{
+params_string = """{
     "table_params": {
         "hash_func_count": 1,
-        "table_size": 409,
-        "max_items_per_bin": 20
+        "table_size": 1638,
+        "max_items_per_bin": 8100
     },
     "item_params": {
         "felts_per_item": 5
     },
     "query_params": {
-        "ps_low_degree": 0,
-        "query_powers": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
+        "ps_low_degree": 310,
+        "query_powers": [ 1, 4, 10, 11, 28, 33, 78, 118, 143, 311, 1555]
     },
     "seal_params": {
-        "plain_modulus": 65537,
-        "poly_modulus_degree": 2048,
-        "coeff_modulus_bits": [ 48 ]
+        "plain_modulus_bits": 22,
+
+        "poly_modulus_degree": 8192,
+        "coeff_modulus_bits": [ 56, 56, 56, 32 ]
     }
 }
-
 """
 
 # server
@@ -202,44 +201,9 @@ def reduce(partitions):
         apsi_server.add_items(partition)
         print(type(partition))
         db_file_path = "./data/apsidb/apsi_%s.db"%k
-        if not os.path.isdir(path.dirname(db_file_path)):
-            os.makedirs(path.dirname(db_file_path))
         apsi_server.save_db(db_file_path=db_file_path)
 
-def get_db(db_file_path):
-    apsi_server = LabeledServer()
-    if os.path.isfile(db_file_path):
-        # load db and insert
-        print("********** ", db_file_path)
-        try:
-            apsi_server.load_db(db_file_path=db_file_path)
 
-        except Exception as e:
-            print("errrrrrrrrrrrrrrrrrrr.........")
-            print(str(e))
-
-    # else:
-    #     apsi_server.init_db(params_string, max_label_length=64)
-    return apsi_server
-
-def display(dir_path=""):
-    g = os.walk(dir_path)  
-    fl = []
-    for path,dir_list,file_list in g:  
-        for file_name in file_list:  
-            print(os.path.join(path, file_name) )
-            fl.append(os.path.join(path, file_name))
-    return fl
-
-def load_file():
-    fl = display("./data/apsidb")
-    i = 0
-    for f in fl:
-        apsi_server = get_db(f)
-        i += 1
-        print(i, apsi_server)
-        del apsi_server
-        
 if __name__ == "__main__":
     s = time.time()
     npartitions = 16**2
@@ -259,5 +223,3 @@ if __name__ == "__main__":
 
     print(len(outputs))
     print(f"Sequential execution: {(time.time() - s):.3f}")
-
-    load_file()

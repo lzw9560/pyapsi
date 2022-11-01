@@ -21,7 +21,7 @@ here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 
 from apsi.server import LabeledServer
 from apsi.client import LabeledClient
-from apsi.utils import _query
+from apsi.utils import _query, set_log_level
 from dataset.dataset import Dataset
 import time
 from hashlib import blake2b
@@ -98,6 +98,8 @@ def get_apsi_db_path(tmp="./", item=""):
 
 
 if __name__ == "__main__":
+    
+    set_log_level("all")
     client = apsi_client = LabeledClient(params_string)
     server = apsi_server = LabeledServer()
     server.init_db(params_string, max_label_length=64)
