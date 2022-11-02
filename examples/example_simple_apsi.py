@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 # Created by lizhiwei at 2022/9/21
-from hashlib import blake2b
 from typing import List, Union, Dict
 from os import path
 import sys

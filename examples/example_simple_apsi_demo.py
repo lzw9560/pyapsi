@@ -1,19 +1,7 @@
-# pyapsi
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-Python wrapper for labeled and unlabeled asynchronous private set intersection (APSI).
-
-## Building && Setup
-
-- Building C++ library for Asymmetric PSI
-  
-  [Building C++ library for Asymmetric PSI]("src/README.md")
-
-- Setup
-    `python setup.py install`
-
-## Example
-
-```python
+# Created by lizhiwei at 2022/9/21
 import time
 from apsi.client import LabeledClient, UnlabeledClient
 from apsi.server import LabeledServer, UnlabeledServer
@@ -21,9 +9,11 @@ from dataset.dataset import Dataset
 from typing import List, Union, Dict
 from os import path
 import sys
+
 here = path.abspath(path.join(path.dirname(__file__)))
 print(here)
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
+
 
 params_string = """{
     "table_params": {
@@ -47,6 +37,8 @@ params_string = """{
 }
 
 """
+
+
 def _query(
     client: Union[UnlabeledClient, LabeledClient],
     server: Union[UnlabeledServer, LabeledServer],
@@ -59,12 +51,14 @@ def _query(
     result = client.extract_result(response)
     return result
 
+
 apsi_server = LabeledServer()
 apsi_server.init_db(params_string, max_label_length=64)
 # add item
 
 items = [('JRIKrInSyZfcBADbXigLiGnHisxpWrEctHEQzrryFjAHFoPQAjEoxQhTPoYgXIFI',
-        'GukbcSbVKQheaIWdNCSszRGwWEJAWTSOPfeTyHqomeCwPehKZHUEugDMxyXtaJHg')]
+          'GukbcSbVKQheaIWdNCSszRGwWEJAWTSOPfeTyHqomeCwPehKZHUEugDMxyXtaJHg')]
+
 
 start = time.time()
 for item in items:
@@ -72,18 +66,16 @@ for item in items:
     apsi_server.add_item(item[0], item[1])
     print(time.time() - start)
 
+
 print("time: ", time.time() - start)
 tmp_path = "."
 db_file_path = str("apsi.db")
 apsi_server.save_db(db_file_path)
 
+
 apsi_client = LabeledClient(params_string)
 
 print("query item: ", _query(apsi_client, apsi_server, [
-    "JRIKrInSyZfcBADbXigLiGnHisxpWrEctHEQzrryFjAHFoPQAjEoxQhTPoYgXIFI"]))
+      "JRIKrInSyZfcBADbXigLiGnHisxpWrEctHEQzrryFjAHFoPQAjEoxQhTPoYgXIFI"]))
 
 assert _query(apsi_client, apsi_server, ["unknown"]) == {}
-```
-
-
-​    
