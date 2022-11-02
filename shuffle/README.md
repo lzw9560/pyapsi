@@ -6,32 +6,42 @@
 
 ### 用户查询
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=ZDUzZjlhYmU5MWM4OWUwNjNiMjkzZGY3YWU5ODA2NGVfd1VzUnl5MkdUUjR3bFBpRnBIUWhWZjdOakNsYlJ6OTVfVG9rZW46Ym94Y25pM1R3V0tPdFBzU3NMaDNVN2dRbVVoXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+![img](https://tva1.sinaimg.cn/large/008vxvgGly1h7qsxhm3jsj30mj06hglr.jpg)
 
 ### 数据预处理
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=MDNmMTgwMDQ5OWFmYmUxZGU5OTVjZmRmMjFmNjk5N2FfTkxwYUN0YU8wT1l6OVFlVXQ2MTA4QmVOQkpNM2xsekdfVG9rZW46Ym94Y25lakdYQnB3ZFE5Vkk3SEY2RHFNa3plXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+![1280X1280](https://tva1.sinaimg.cn/large/008vxvgGly1h7qszwpmzbj30e80hymxh.jpg)
 
-### 数据预处理（集群）TODO
+
+
+
+
+### 数据预处理（集群）
 
 ### 排序
 
 #### MapReduce 全排序
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=YWQ4YWMwYjA1MjdkZTYzZDY2ZTllNjU4Y2JkZjM2MTZfaFBxeDl1N3JHVjRFQmo3Tm1yRkJIOVE0TjlkcWNHbkVfVG9rZW46Ym94Y25wdEpsVkNkVjNoVDBhenRnd2lZWk9jXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+![1280X1280 (1)](https://tva1.sinaimg.cn/large/008vxvgGly1h7qt2r9nqcj30840b7glw.jpg)
+
+
 
 - 方法一：map任务单独排序，通过reduce进行总排序，并行度不高，无法分布式计算特点，不推荐。
 
 - 方法二：针对方法一进行改进
    1. 使用多个partition对map结果进行区间分区，将多个分区结果拼接，得到一个全局排序文件
 
-      ![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=NDAwNTA5NjMzMDlhZTA4OGVhNTA5NWQ5ZjM4NTQ3YmVfZEcxbThUZnZkZGxLQ0tFS00xV2piaTZRUGJocEhFTVZfVG9rZW46Ym94Y254MnVkcnR4emxiM0ZZWkQ2dTdEbVZiXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+      ![0f8a6752-8d1b-4e4b-9ebf-8dbbc634bf16](https://miro.medium.com/max/640/1*nJYIs2ktVkqVsgSUCzfjaA.gif)
 
+      
+
+      
+   
    2. *对具有 4 个分区的分布式数据集进行混洗，其中每个分区是一组 4 个块。例如，在排序操作中，每个方格都是一个排序后的子分区，其键位于不同的范围内。然后每个 reduce 任务对相同阴影的子分区进行合并排序。*
+   
+      参考：<https://medium.com/distributed-computing-with-ray/executing-a-distributed-shuffle-without-a-mapreduce-system-d5856379426c>
 
-      <https://medium.com/distributed-computing-with-ray/executing-a-distributed-shuffle-without-a-mapreduce-system-d5856379426c>
-
-### 数据分箱（分桶） TODO
+### 数据分箱（分桶） 
 
 > 原始数据 -> 数据分片 Shared （理想情况分到对应的桶里TODO）->db文件
 
@@ -69,9 +79,9 @@
 
         *结构1：假设每个父文件夹最多包含256个文件夹（按照1个字节划分，每个字节8位，2^8）*
 
-     
+     ![1280X1280 (2)](https://tva1.sinaimg.cn/large/008vxvgGly1h7qt4oadyqj30dr0iogmo.jpg)
 
-      ![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=YTdhZmIxN2JiMDRjMGE0NzM2M2NhNjcyN2E1ZDk4ODJfY2RBUUZMZlNydjNaUkNJNFpZdXZ0ZXVIbkVhSU5hUjhfVG9rZW46Ym94Y251WkdrV29aUENqeVlpd3cya3FzczdiXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+      
 
      *结构2：假设每个父文件夹最多包含2^8^2(65536)个文件夹，文件夹深度减半，注意叶子节点文件夹数量仍为256。*
 
@@ -170,7 +180,11 @@ Supervisor Actor 预先定义分桶；
 
 Worker Actor 执行具体的任务，对分桶数据进行处理，APSI加密。
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=NTc3ZWU2ODAzNzczNTJhOWVlZTMyMjljYmY4OWY4N2RfYzh0d0p6Z0xteldqZ0NVVjhGZlFQUnNSa2hSSEdjT2hfVG9rZW46Ym94Y25IaWU5WmxsWEl5UkV5SVd3dnFub0JjXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+
+
+![006f1c4b-8d4b-4da8-bf58-6e2b52a34316](https://tva1.sinaimg.cn/large/008vxvgGly1h7qt6xi8vvj30ch06b3ym.jpg)
+
+
 
 Example：
 
@@ -196,15 +210,19 @@ print(ray.get(sup.work.remote()))  # outputs ['done', 'done', 'done']
 
 单机插入256：
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=YjBhZDU3ZTkzZTk4NDQ2MDJlZjY0ZGUxMzI1M2I0NzlfQnl4cVhqc3J2ME1zbm1oOTM5OTZmM0NxZG9aVFQ5TktfVG9rZW46Ym94Y25CeW1aSUJjSFZmT1UzdEZLUlhodXhmXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+![2ea4ed11-c83f-48cc-bd79-fac144fe8b20](https://tva1.sinaimg.cn/large/008vxvgGly1h7qt583no3j30tf0bkdje.jpg)
+
+
 
 单机10w插入：
 
-![img](https://tva1.sinaimg.cn/large/008vxvgGly1h7qom2hi2sj30ys0c943e.jpg)	
+![img](https://tva1.sinaimg.cn/large/008vxvgGly1h7qsxl0dk4j30ys0c943e.jpg)	
 
 加密10w 单机
 
-![img](https://m74hgjmt55.feishu.cn/space/api/box/stream/download/asynccode/?code=NGQzOTBiMTc0NDZhM2Q2M2UzZTA3ZjliODVmMjM4Y2Vfb1JvR1BHbEVFVEdRSDJFMHhwZEdGUkhPc25DRG9icmZfVG9rZW46Ym94Y250VGo4ZW5DTzNWb2tNZEZwUDE4RERiXzE2NjczNjMzNTQ6MTY2NzM2Njk1NF9WNA)
+![629bee89-a4bf-442f-b673-ee73a04fc1ea](https://tva1.sinaimg.cn/large/008vxvgGly1h7qt5i5rl3j30tj0fmdju.jpg)
+
+
 
 #### Test Case
 
