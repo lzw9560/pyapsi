@@ -6,7 +6,7 @@ Python wrapper for labeled and unlabeled asynchronous private set intersection (
 
 - Building C++ library for Asymmetric PSI
   
-  [Building C++ library for Asymmetric PSI]("src/README.md")
+  [Building C++ library for Asymmetric PSI](https://gitlab.primihub.com/openmpc/pyapsi/-/blob/develop/src/README.md)
 
 - Setup
     `python setup.py install`
@@ -85,5 +85,4 @@ print("query item: ", _query(apsi_client, apsi_server, [
 assert _query(apsi_client, apsi_server, ["unknown"]) == {}
 ```
 
-
-​    
+​
