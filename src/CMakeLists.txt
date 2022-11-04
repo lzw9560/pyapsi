@@ -287,7 +287,8 @@ target_include_directories(apsi PUBLIC
 target_include_directories(apsi PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/common>
     $<INSTALL_INTERFACE:${APSI_INCLUDES_INSTALL_DIR}>
-    /usr/local/Cellar/flatbuffers/2.0.8/include/
+    # /usr/local/Cellar/flatbuffers/2.0.8/include/
+    /home/linuxbrew/.linuxbrew/Cellar/flatbuffers/2.0.8/include/
 )
 target_include_directories(apsi PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/common>
@@ -458,8 +459,10 @@ endif()
 
 if(APSI_BUILD_CLI)
     link_directories(
-        /opt/homebrew/Cellar/flatbuffers/2.0.6/lib
-        /Users/chb/Projects/deps/APSI/build/lib)
+	    # /opt/homebrew/Cellar/flatbuffers/2.0.6/lib
+	/home/linuxbrew/.linuxbrew/Cellar/flatbuffers/2.0.8/lib
+	# /Users/chb/Projects/deps/APSI/build/lib
+	)
     add_library(common_cli OBJECT)
     add_subdirectory(cli/common)
     target_include_directories(common_cli PUBLIC cli)
