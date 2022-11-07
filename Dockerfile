@@ -45,5 +45,6 @@ RUN python3 -m pip install --upgrade pip \
  	&& python3 setup.py install 
 	# && python3 setup.py solib --solib-path $TARGET_PATH
 
+RUN python3 -m pip install tqdm
 # RUN python3 -c "from distutils import sysconfig"
 CMD ["/bin/bash"]
