@@ -61,7 +61,7 @@ ro.block_size = 10 << 20
 
 
 def save_block(tmp_path, data):
-    print("tmp_path: ", tmp_path)
+    # print("tmp_path: ", tmp_path)
     if not os.path.isdir(path.dirname(tmp_path)):
         os.makedirs(tmp_path)
     with open(tmp_path, "wb") as f:
