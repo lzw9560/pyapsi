@@ -45,10 +45,10 @@ SEVERAL = 4
 BUCKET_CAPACITY = UNIT ** SEVERAL
 
 # OUTPUT_DIR = "./data/10w/apsidb"
-OUTPUT_DIR = "./data/100w/apsidb"
+# OUTPUT_DIR = "./data/100w/apsidb"
+OUTPUT_DIR = "/data/100w/apsidb"
 
-if not os.path.isdir(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+
 
 tmp = Path(here_parent + "/data")
 tmp = Path("/data")
@@ -61,7 +61,7 @@ ro.block_size = 10 << 20
 
 
 def save_block(tmp_path, data):
-    print(tmp_path)
+    print("tmp_path: ", tmp_path)
     if not os.path.isdir(path.dirname(tmp_path)):
         os.makedirs(tmp_path)
     with open(tmp_path, "wb") as f:
@@ -117,8 +117,7 @@ class Worker:
 
     def block_cut(self, name, dataset):
         # tmp_path = f"{BUCKET_TMP_PATH}/{name}"
-        tmp_path = "{bucket_tmp_path}/{name}".format(
-            bucket_tmp_path=BUCKET_TMP_PATH, name=name)
+        tmp_path = "{bucket_tmp_path}/{name}".format(bucket_tmp_path=BUCKET_TMP_PATH, name=name)
         save_block(tmp_path=tmp_path, data=dataset)
         return tmp_path
 
@@ -273,7 +272,7 @@ class Supervisor:
         print(i, bin, len(block), block[:1], block[-1:])
         # last bucket
         worker = Worker.remote(name=bin)
-        tasks.append(worker.encrypt.remote(name=bin, dataset=block))
+        tasks.append(worker.encrypt.remote(name=bin, dataset=block, params_str=self.params_str))
         l += len(block)
         return tasks
 
