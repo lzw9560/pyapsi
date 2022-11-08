@@ -52,7 +52,7 @@ OUTPUT_DIR = "/data/100w/apsidb"
 
 tmp = Path(here_parent + "/data")
 tmp = Path("/data")
-INPUT_DATA_PATH = str(tmp/"db_10w.csv")
+INPUT_DATA_PATH = str(tmp/"db_100w.csv")
 # INPUT_DATA_PATH = str(tmp / "db_100w.csv")
 BUCKET_TMP_PATH = str(tmp / "bucket_tmp")
 
@@ -64,8 +64,11 @@ def save_block(tmp_path, data):
     # print("tmp_path: ", tmp_path)
     if not os.path.isdir(path.dirname(tmp_path)):
         os.makedirs(tmp_path)
-    with open(tmp_path, "wb") as f:
-        pickle.dump(data, f)
+    if not data:
+        return
+    else:
+        with open(tmp_path, "wb") as f:
+            pickle.dump(data, f)
 
 
 def load_block(tmp_path):
@@ -118,7 +121,8 @@ class Worker:
     def block_cut(self, name, dataset):
         # tmp_path = f"{BUCKET_TMP_PATH}/{name}"
         tmp_path = "{bucket_tmp_path}/{name}".format(bucket_tmp_path=BUCKET_TMP_PATH, name=name)
-        save_block(tmp_path=tmp_path, data=dataset)
+        if dataset:
+            save_block(tmp_path=tmp_path, data=dataset)
         return tmp_path
 
     def encrypt(self, name, dataset, params_str):
