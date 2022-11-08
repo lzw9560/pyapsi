@@ -88,7 +88,7 @@ class Worker:
         data = [(d["item"], d["label"]) for d in dataset]
         apsi_server.add_items(data)
         apsi_server.save_db(db_file_path=db_file_path)
-        if int(name, 16) % (16**3) == 0:
+        if int(name, 16) % (16**2) == 0:
             print("encrypt: ", name, db_file_path)
         return len(dataset)
 
