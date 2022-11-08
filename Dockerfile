@@ -38,5 +38,5 @@ RUN python3 -m pip install --upgrade pip \
 
 # RUN python3 -m pip install tqdm	
 # RUN python3 -c "from distutils import sysconfig"
-RUN python -c "import pyapsi; print(pyapsi.__doc__)"
+RUN python3 -c "import pyapsi; print(pyapsi.__doc__)"
 CMD ["/bin/bash"]
