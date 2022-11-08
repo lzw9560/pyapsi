@@ -10,7 +10,6 @@
 # distribution of block buckets
 # to sender
 
-import json
 import os
 import sys
 import time
@@ -18,17 +17,12 @@ from hashlib import blake2b
 from os import path
 from pathlib import Path
 
-import cloudpickle as pickle
 import numpy as np
-import pandas
 import ray
 from loguru import logger
 from pyarrow._csv import ReadOptions
 
-from apsi.client import LabeledClient
-from apsi.server import LabeledServer
-from apsi.utils import _query, set_log_level
-from dataset.dataset import Dataset
+from apsi.utils import save_block, load_block, set_log_level, get_params, get_db
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
@@ -38,7 +32,6 @@ here_parent = path.abspath(path.join(path.dirname(__file__), "../"))
 
 set_log_level("all")
 
-# PARAMS_PATH = str( "../src/parameters/100K-1.json")
 PARAMS_PATH = str(Path(here_parent) / "src/parameters/100K-1.json")
 UNIT = 16
 SEVERAL = 4
@@ -48,64 +41,14 @@ BUCKET_CAPACITY = UNIT ** SEVERAL
 # OUTPUT_DIR = "./data/100w/apsidb"
 OUTPUT_DIR = "/data/10w/apsidb"
 
-
-
 tmp = Path(here_parent + "/data")
 tmp = Path("/data")
-INPUT_DATA_PATH = str(tmp/"db_10w.csv")
+INPUT_DATA_PATH = str(tmp / "db_10w.csv")
 # INPUT_DATA_PATH = str(tmp / "db_100w.csv")
 BUCKET_TMP_PATH = str(tmp / "bucket_tmp")
 
 ro = ReadOptions()
 ro.block_size = 10 << 20
-
-
-def save_block(tmp_path, data):
-    # print("tmp_path: ", tmp_path)
-    if not os.path.isdir(path.dirname(tmp_path)):
-        os.makedirs(tmp_path)
-    if not data:
-        return
-    else:
-        with open(tmp_path, "wb") as f:
-            pickle.dump(data, f)
-
-
-def load_block(tmp_path):
-    with open(tmp_path, "rb") as f:
-        data = pickle.load(f)
-    return data
-
-
-def get_params(params_path=None):
-    """Get APSI parameters string.
-
-    :param params_path: _description_, defaults to None
-    :type params_path: _type_, optional
-    :return: _description_
-    :rtype: _type_
-    """
-
-    if not params_path:
-        params_path = str(Path(here_parent) / "src/parameters/100k-1.json")
-    # print(params_path)
-    with open(params_path, "r") as f:
-        params_string = json.dumps(json.load(f))
-    return params_string
-
-
-def get_db(db_file_path, params_str):
-    set_log_level("all")
-    if not params_str:
-        params_str = get_params(params_path=PARAMS_PATH)
-    apsi_server = LabeledServer()
-    if os.path.isfile(db_file_path):
-        # load db
-        apsi_server.load_db(db_file_path=db_file_path)
-    else:
-        # init db
-        apsi_server.init_db(params_str, max_label_length=64)
-    return apsi_server
 
 
 @ray.remote
@@ -144,7 +87,7 @@ class Worker:
 @ray.remote
 class Supervisor:
 
-    def __init__(self, data_path="", several=2,params_str=None) -> None:
+    def __init__(self, data_path="", several=2, params_str=None) -> None:
         self.several = several
         self.n_bucket = 16 ** several
         self.dataset = self.pre_data(data_path=data_path)
@@ -153,30 +96,18 @@ class Supervisor:
 
     def get_bins(self):
         several = self.several
-        # [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**2)]
-        # self.bins = [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, self.n_bucket)]
-        # bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**4)])
         self.bins = np.array([hex(bin)[2:] if len(hex(bin)[
-                             2:]) == several else f"{'0'*(several-len(hex(bin)[2:]))}{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
-        # self.bins = np.array([hex(bin)[2:]  for bin in range(0, self.n_bucket)])
-        # self.bins = [bin for bin in range(1, self.n_bucket)]
+                                                  2:]) == several else f"{'0' * (several - len(hex(bin)[2:]))}{hex(bin)[2:]}"
+                              for bin in range(0, self.n_bucket)])
 
         print(several, self.n_bucket)
-        # print(self.bins)
-
-        # print(len(self.bins))
-        # time.sleep(1)
         return self.bins
 
     def get_bucket(self, bucket_name, dataset):
-        # bucket_ds = self.get_bucket_dataset(bucket_name=bucket_name)
-        # print("=-=-=", bucket_ds.count())
         bucket = Worker.remote(name=bucket_name, dataset=dataset)
         return bucket
 
     def set_bucket(self, bucket_name, dataset):
-        # bucket_ds = self.get_bucket_dataset(bucket_name=bucket_name)
-        # print("=-=-=", bucket_ds.count())
         bucket = Worker.remote(name=bucket_name, dataset=dataset)
         return bucket
 
@@ -249,7 +180,7 @@ class Supervisor:
         if len(hex(i)[2:]) == self.several:
             bin = hex(i)[2:]
         else:
-            bin = f"{'0'*(self.several-len(hex(i)[2:]))}{hex(i)[2:]}"
+            bin = f"{'0' * (self.several - len(hex(i)[2:]))}{hex(i)[2:]}"
         print("bin: ", bin)
         return bin
 
@@ -288,7 +219,6 @@ if __name__ == "__main__":
     # ray.init(address='ray://192.168.99.26:10001/')
     # ray.init(address='ray://118.190.39.100:30007/')
 
-    
     params_obj = get_params(params_path=PARAMS_PATH)
     ray.init(address='ray://192.168.99.30:32657/')
     params_obj_id = ray.put(params_obj)
@@ -296,11 +226,7 @@ if __name__ == "__main__":
     params_str = ray.get(params_obj_id)
     sup = Supervisor.remote(data_path=INPUT_DATA_PATH, several=SEVERAL, params_str=params_str)
     tasks = sup.work.remote()
-    # ready_ids, remaining_ids = ray.wait(tasks, num_returns=10, timeout=100)
-
     ids = ray.get(tasks)
-
     print(ray.get(ids))
-
     logger.debug(f"Distributed actor execution: {(time.time() - s):.3f}")
     ray.shutdown()

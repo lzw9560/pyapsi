@@ -9,7 +9,7 @@ USER root
 RUN apt-get update && apt-get -y install cmake libtclap-dev libjsoncpp-dev libzmq3-dev \
 	&& apt install -y software-properties-common \
 	&& apt install -y python3 python3-distutils python3-dev python3-pip \
- 	&& rm -rf /var/lib/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/*
 
 RUN python3 --version
 
@@ -30,21 +30,13 @@ RUN mkdir build && cd build \
 
 ARG TARGET_PATH=/app/src/build/lib
 
-# FROM ubuntu:20.04 as runner
-# Install python3 and GCC openmp (Depends with cryptFlow2 library)
-# RUN apt-get update \
-#	&& apt install -y python3 python3-distutils python3-dev python3-pip \
-# 	&& rm -rf /var/lib/apt/lists/*
-
-# COPY --from=builder $TARGET_PATH ./src/build/lib
-# COPY --from=builder /app /app
 WORKDIR /app
 
 RUN python3 -m pip install --upgrade pip \
 	&& python3 -m pip install -r requirements.txt \
- 	&& python3 setup.py install 
-	# && python3 setup.py solib --solib-path $TARGET_PATH
+	&& python3 setup.py install 
 
-RUN python3 -m pip install tqdm
+# RUN python3 -m pip install tqdm	
 # RUN python3 -c "from distutils import sysconfig"
+RUN python -c "import pyapsi; print(pyapsi.__doc__)"
 CMD ["/bin/bash"]

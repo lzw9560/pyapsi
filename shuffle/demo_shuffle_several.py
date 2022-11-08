@@ -18,17 +18,14 @@ from hashlib import blake2b
 from os import path
 from pathlib import Path
 
-import cloudpickle as pickle
 import numpy as np
-import pandas
 import ray
 from loguru import logger
 from pyarrow._csv import ReadOptions
 
 from apsi.client import LabeledClient
 from apsi.server import LabeledServer
-from apsi.utils import _query, set_log_level
-from dataset.dataset import Dataset
+from apsi.utils import save_block, load_block, set_log_level, get_params, get_db
 
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../")))
 
@@ -59,63 +56,26 @@ ro = ReadOptions()
 ro.block_size = 10 << 20
 
 
-def save_block(tmp_path, data):
-    if not os.path.isdir(path.dirname(tmp_path)):
-        os.makedirs(tmp_path)
-    with open(tmp_path, "wb") as f:
-        pickle.dump(data, f)
-
-
-def load_block(tmp_path):
-    with open(tmp_path, "rb") as f:
-        data = pickle.load(f)
-    return data
-
-
-def get_params(params_path=None):
-    """Get APSI parameters string.
-
-    :param params_path: _description_, defaults to None
-    :type params_path: _type_, optional
-    :return: _description_
-    :rtype: _type_
-    """
-
-    if not params_path:
-        params_path = str(Path(here_parent) / "src/parameters/100k-1.json")
-    print(params_path)
-    with open(params_path, "r") as f:
-        params_string = json.dumps(json.load(f))
-    return params_string
-
-
-def get_db(db_file_path):
-    set_log_level("all")
-    params_string = get_params(params_path=PARAMS_PATH)
-    apsi_server = LabeledServer()
-    if os.path.isfile(db_file_path):
-        # load db
-        apsi_server.load_db(db_file_path=db_file_path)
-    else:
-        # init db
-        apsi_server.init_db(params_string, max_label_length=64)
-    return apsi_server
-
-
 @ray.remote
 class Worker:
     def __init__(self, name):
         self.name = name
 
     def get_block_dataset(self, bucket_name, dataset):
-        ds = dataset.map_batches(lambda batch: [record for _, record in batch.iterrows() if
-                                                record["hash_item"][:len(bucket_name)] == bucket_name])  # noqa
+        ds = dataset.map_batches(
+            lambda batch: [
+                record
+                for _, record in batch.iterrows()
+                if record["hash_item"][: len(bucket_name)] == bucket_name
+            ]
+        )  # noqa
         return ds
 
     def block_cut(self, name, dataset):
         # tmp_path = f"{BUCKET_TMP_PATH}/{name}"
         tmp_path = "{bucket_tmp_path}/{name}".format(
-            bucket_tmp_path=BUCKET_TMP_PATH, name=name)
+            bucket_tmp_path=BUCKET_TMP_PATH, name=name
+        )
         save_block(tmp_path=tmp_path, data=dataset)
         return tmp_path
 
@@ -137,7 +97,6 @@ class Worker:
 
 @ray.remote
 class Supervisor:
-
     def __init__(self, data_path="", several=2) -> None:
         self.several = several
         self.n_bucket = 16 ** several
@@ -149,8 +108,14 @@ class Supervisor:
         # [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**2)]
         # self.bins = [hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, self.n_bucket)]
         # bins = np.array([hex(bin)[2:] if len(hex(bin)[2:]) ==2 else f"0{hex(bin)[2:]}"  for bin in range(0, 16**4)])
-        self.bins = np.array([hex(bin)[2:] if len(hex(bin)[
-                             2:]) == several else f"{'0'*(several-len(hex(bin)[2:]))}{hex(bin)[2:]}" for bin in range(0, self.n_bucket)])
+        self.bins = np.array(
+            [
+                hex(bin)[2:]
+                if len(hex(bin)[2:]) == several
+                else f"{'0' * (several - len(hex(bin)[2:]))}{hex(bin)[2:]}"
+                for bin in range(0, self.n_bucket)
+            ]
+        )
         # self.bins = np.array([hex(bin)[2:]  for bin in range(0, self.n_bucket)])
         # self.bins = [bin for bin in range(1, self.n_bucket)]
 
@@ -176,7 +141,7 @@ class Supervisor:
     def pre_buckets(self, n_bucket):
         buckets = []
         for n in range(n_bucket):
-            bucket_value = 0xff - n
+            bucket_value = 0xFF - n
             if bucket_value < 0:
                 break
             print(bucket_value)
@@ -202,15 +167,19 @@ class Supervisor:
         # dataset = Dataset()
         # ds = dataset.read(format="csv", paths=data_path, parallelism=500)
 
-        ds = ray.data.read_csv(
-            paths=[data_path], **{"read_options": ro}).repartition(200)
+        ds = ray.data.read_csv(paths=[data_path], **{"read_options": ro}).repartition(
+            200
+        )
         ds.schema()
         print("***")
         ds.show(2)
 
         print("***")
-        print("The CSV file reading {} strip data takes {}s:".format(
-            ds.count(), time.time() - start))
+        print(
+            "The CSV file reading {} strip data takes {}s:".format(
+                ds.count(), time.time() - start
+            )
+        )
 
         return ds
 
@@ -224,8 +193,15 @@ class Supervisor:
         :return: _description_
         :rtype: _type_
         """
-        ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(
-            str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+        ds = ds.map(
+            lambda record: {
+                "item": record["item"],
+                "hash_item": blake2b(
+                    str.encode(record["item"]), digest_size=16
+                ).hexdigest(),
+                "label": record["label"],
+            }
+        )
         ds = ds.sort("hash_item")
         ds.schema()
         print("***")
@@ -242,7 +218,7 @@ class Supervisor:
         if len(hex(i)[2:]) == self.several:
             bin = hex(i)[2:]
         else:
-            bin = f"{'0'*(self.several-len(hex(i)[2:]))}{hex(i)[2:]}"
+            bin = f"{'0' * (self.several - len(hex(i)[2:]))}{hex(i)[2:]}"
         print("bin: ", bin)
         return bin
 
@@ -256,7 +232,7 @@ class Supervisor:
                 break
             # bin = self.bins[i]
             bin = self.get_bin(i)
-            if record["hash_item"][:self.several] == bin:
+            if record["hash_item"][: self.several] == bin:
                 block.append(dict(record))
             else:
                 i += 1
