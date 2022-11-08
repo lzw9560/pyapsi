@@ -13,7 +13,7 @@ from typing import Dict, List
 from pyapsi import APSIClient as _Client
 from pyapsi.utils import _set_log_level as set_log_level
 
-set_log_level("all")
+# set_log_level("all")
 
 class _BaseClient(_Client):
     queried_items: List[str]

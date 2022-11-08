@@ -92,12 +92,16 @@ class Worker:
         if int(name, 16) % (16**2) == 0:
             print("encrypt: ", name, db_file_path)
         # assert
-        # return self.query_items(name, dataset, params_str)
-        return len(dataset)
+        return self.query_items(name, dataset, params_str)
 
     def query_items(self, name, dataset, params_str):
+        # read
+        # tmp_path = self.block_cut(name, dataset)
+        # dataset = load_block(tmp_path=tmp_path)
 
         db_file_path = f"{OUTPUT_DIR}/{name}.db"
+        # if not os.path.isdir(path.dirname(db_file_path)):
+        # os.makedirs(path.dirname(db_file_path))
         apsi_server = get_db(db_file_path, params_str)
 
         data = [(d["item"], d["label"]) for d in dataset]
@@ -105,7 +109,10 @@ class Worker:
         apsi_client = LabeledClient(params_str)
         assert_result = []
         for d in data:
+            # items = [d[0] for d in data]
+            # data = [{d[0]: d[1]} for d in data]
             query_data = _query(apsi_client, apsi_server, [d[0]])
+            assert {d[0]: d[1]} == query_data
             print(
                 "query block: {name}, {result}".format(
                     name=name, result=({d[0]: d[1]} == query_data)
@@ -114,6 +121,26 @@ class Worker:
             assert_result.append({d[0]: d[1]} == query_data)
             print(assert_result)
         return set(assert_result)
+
+    def query_item(self, name, record, params_str):
+        db_file_path = f"{OUTPUT_DIR}/{name}.db"
+        apsi_server = get_db(db_file_path, params_str)
+        apsi_server.load_db(db_file_path=db_file_path)
+        apsi_client = LabeledClient(params_str)
+        item = record["item"]
+        data = {record["item"]: record["label"]}
+        query_data = _query(apsi_client, apsi_server, [item])
+        if data != query_data:
+            print(db_file_path)
+            print(data)
+            print(query_data)
+        print(
+            ">>> assert: {name}, {result}".format(
+                name=name, result=(data == query_data)
+            )
+        )
+
+        return data == query_data
 
 
 @ray.remote
@@ -237,36 +264,15 @@ class Supervisor:
         l = 0
         block = []
         for record in self.dataset.iter_rows():
-            bin = self.get_bin(i)
-            if i > self.n_bucket:
-                print(i, self.n_bucket, "break...")
-                break
-
-            if record["hash_item"][: self.several] == bin:
-                block.append(dict(record))
-            elif record["hash_item"][: self.several] != bin:
-                # save bucket and encrypt
-                worker = Worker.remote(name=bin)
-                tasks.append(
-                    worker.encrypt.remote(
-                        name=bin, dataset=block, params_str=self.params_str
-                    )
+            # bin = self.get_bin(i)
+            bin = record["hash_item"][: self.several]
+            # db_file_path = f"{OUTPUT_DIR}/{bin}.db"
+            worker = Worker.remote(name=bin)
+            tasks.append(
+                worker.query_item.remote(
+                    name=bin, record=record, params_str=self.params_str
                 )
-                # l += len(block)
-                if i % (16**3) == 0:
-                    print("index: ", i, bin, len(block), block[:1], block[-1:])
-                # next block
-                block = [dict(record)]
-                i = int(record["hash_item"][: self.several], 16)
-
-        bin = self.get_bin(i)
-        print("index: ", i, bin, len(block), block[:1], block[-1:])
-        # last block
-        worker = Worker.remote(name=bin)
-        tasks.append(
-            worker.encrypt.remote(name=bin, dataset=block, params_str=self.params_str)
-        )
-        l += len(block)
+            )
         return tasks
 
 

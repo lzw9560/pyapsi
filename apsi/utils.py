@@ -38,7 +38,7 @@ def _query(
     response = server.handle_query(query)
     # print("response: ", response)
     result = client.extract_result(response)
-    print(result)
+    # print(result)
     return result
 
 
