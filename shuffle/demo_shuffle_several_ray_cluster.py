@@ -35,15 +35,15 @@ set_log_level("all")
 PARAMS_PATH = str(Path(here_parent) / "src/parameters/100K-1.json")
 UNIT = 16
 SEVERAL = 4
-BUCKET_CAPACITY = UNIT ** SEVERAL
+BUCKET_CAPACITY = UNIT**SEVERAL
 
 # OUTPUT_DIR = "./data/10w/apsidb"
 # OUTPUT_DIR = "./data/100w/apsidb"
-OUTPUT_DIR = "/data/100w/apsidb"
+OUTPUT_DIR = "/data/10w/apsidb"
 
 tmp = Path(here_parent + "/data")
 tmp = Path("/data")
-INPUT_DATA_PATH = str(tmp / "db_100w.csv")
+INPUT_DATA_PATH = str(tmp / "db_10w.csv")
 # INPUT_DATA_PATH = str(tmp / "db_100w.csv")
 BUCKET_TMP_PATH = str(tmp / "bucket_tmp")
 
@@ -57,13 +57,20 @@ class Worker:
         self.name = name
 
     def get_block_dataset(self, bucket_name, dataset):
-        ds = dataset.map_batches(lambda batch: [record for _, record in batch.iterrows() if
-                                                record["hash_item"][:len(bucket_name)] == bucket_name])  # noqa
+        ds = dataset.map_batches(
+            lambda batch: [
+                record
+                for _, record in batch.iterrows()
+                if record["hash_item"][: len(bucket_name)] == bucket_name
+            ]
+        )  # noqa
         return ds
 
     def block_cut(self, name, dataset):
         # tmp_path = f"{BUCKET_TMP_PATH}/{name}"
-        tmp_path = "{bucket_tmp_path}/{name}".format(bucket_tmp_path=BUCKET_TMP_PATH, name=name)
+        tmp_path = "{bucket_tmp_path}/{name}".format(
+            bucket_tmp_path=BUCKET_TMP_PATH, name=name
+        )
         if dataset:
             save_block(tmp_path=tmp_path, data=dataset)
         return tmp_path
@@ -81,26 +88,32 @@ class Worker:
         data = [(d["item"], d["label"]) for d in dataset]
         apsi_server.add_items(data)
         apsi_server.save_db(db_file_path=db_file_path)
+        if int(name, 16) % (16**3) == 0:
+            print("encrypt: ", name, db_file_path)
         return len(dataset)
 
 
 @ray.remote
 class Supervisor:
-
     def __init__(self, data_path="", several=2, params_str=None) -> None:
         self.several = several
-        self.n_bucket = 16 ** several
+        self.n_bucket = 16**several
         self.dataset = self.pre_data(data_path=data_path)
         self.params_str = params_str
         # self.bins = self.get_bins()
 
     def get_bins(self):
         several = self.several
-        self.bins = np.array([hex(bin)[2:] if len(hex(bin)[
-                                                  2:]) == several else f"{'0' * (several - len(hex(bin)[2:]))}{hex(bin)[2:]}"
-                              for bin in range(0, self.n_bucket)])
+        self.bins = np.array(
+            [
+                hex(bin)[2:]
+                if len(hex(bin)[2:]) == several
+                else f"{'0' * (several - len(hex(bin)[2:]))}{hex(bin)[2:]}"
+                for bin in range(0, self.n_bucket)
+            ]
+        )
 
-        print(several, self.n_bucket)
+        # print(several, self.n_bucket)
         return self.bins
 
     def get_bucket(self, bucket_name, dataset):
@@ -114,7 +127,7 @@ class Supervisor:
     def pre_buckets(self, n_bucket):
         buckets = []
         for n in range(n_bucket):
-            bucket_value = 0xff - n
+            bucket_value = 0xFF - n
             if bucket_value < 0:
                 break
             print(bucket_value)
@@ -140,15 +153,19 @@ class Supervisor:
         # dataset = Dataset()
         # ds = dataset.read(format="csv", paths=data_path, parallelism=500)
 
-        ds = ray.data.read_csv(
-            paths=[data_path], **{"read_options": ro}).repartition(200)
+        ds = ray.data.read_csv(paths=[data_path], **{"read_options": ro}).repartition(
+            200
+        )
         ds.schema()
         print("***")
         ds.show(2)
 
         print("***")
-        print("The CSV file reading {} strip data takes {}s:".format(
-            ds.count(), time.time() - start))
+        print(
+            "The CSV file reading {} strip data takes {}s:".format(
+                ds.count(), time.time() - start
+            )
+        )
 
         return ds
 
@@ -162,8 +179,15 @@ class Supervisor:
         :return: _description_
         :rtype: _type_
         """
-        ds = ds.map(lambda record: {"item": record["item"], "hash_item": blake2b(
-            str.encode(record["item"]), digest_size=16).hexdigest(), "label": record["label"]})
+        ds = ds.map(
+            lambda record: {
+                "item": record["item"],
+                "hash_item": blake2b(
+                    str.encode(record["item"]), digest_size=16
+                ).hexdigest(),
+                "label": record["label"],
+            }
+        )
         ds = ds.sort("hash_item")
         ds.schema()
         print("***")
@@ -181,7 +205,7 @@ class Supervisor:
             bin = hex(i)[2:]
         else:
             bin = f"{'0' * (self.several - len(hex(i)[2:]))}{hex(i)[2:]}"
-        print("bin: ", bin)
+        # print("bin: ", bin)
         return bin
 
     def work(self):
@@ -190,24 +214,35 @@ class Supervisor:
         l = 0
         block = []
         for record in self.dataset.iter_rows():
-            if i > self.n_bucket:
-                break
-            # bin = self.bins[i]
             bin = self.get_bin(i)
-            if record["hash_item"][:self.several] == bin:
+            if i > self.n_bucket:
+                print(i, self.n_bucket, "break...")
+                break
+
+            if record["hash_item"][: self.several] == bin:
                 block.append(dict(record))
-            else:
-                i += 1
+            elif record["hash_item"][: self.several] != bin:
                 # save bucket and encrypt
                 worker = Worker.remote(name=bin)
-                tasks.append(worker.encrypt.remote(name=bin, dataset=block, params_str=self.params_str))
-                l += len(block)
-                print(i - 1, bin, len(block), block[:1], block[-1:])
+                tasks.append(
+                    worker.encrypt.remote(
+                        name=bin, dataset=block, params_str=self.params_str
+                    )
+                )
+                # l += len(block)
+                if i % (16**3) == 0:
+                    print("index: ", i, bin, len(block), block[:1], block[-1:])
+                # next block
                 block = [dict(record)]
-        print(i, bin, len(block), block[:1], block[-1:])
-        # last bucket
+                i = int(record["hash_item"][: self.several], 16)
+
+        bin = self.get_bin(i)
+        print("index: ", i, bin, len(block), block[:1], block[-1:])
+        # last block
         worker = Worker.remote(name=bin)
-        tasks.append(worker.encrypt.remote(name=bin, dataset=block, params_str=self.params_str))
+        tasks.append(
+            worker.encrypt.remote(name=bin, dataset=block, params_str=self.params_str)
+        )
         l += len(block)
         return tasks
 
@@ -220,11 +255,13 @@ if __name__ == "__main__":
     # ray.init(address='ray://118.190.39.100:30007/')
 
     params_obj = get_params(params_path=PARAMS_PATH)
-    ray.init(address='ray://192.168.99.30:32657/')
+    ray.init(address="ray://192.168.99.30:32657/")
     params_obj_id = ray.put(params_obj)
     print(params_obj_id)
     params_str = ray.get(params_obj_id)
-    sup = Supervisor.remote(data_path=INPUT_DATA_PATH, several=SEVERAL, params_str=params_str)
+    sup = Supervisor.remote(
+        data_path=INPUT_DATA_PATH, several=SEVERAL, params_str=params_str
+    )
     tasks = sup.work.remote()
     ids = ray.get(tasks)
     print(ray.get(ids))
